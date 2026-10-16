@@ -1,0 +1,16 @@
+# Dependências do Node
+node_modules/
+backend/node_modules/
+
+# Variáveis de Ambiente e Segredos
+.env
+backend/.env
+
+# Logs do Sistema e NPM
+*.log
+npm-debug.log*
+
+# Arquivos do Sistema Operacional
+.DS_Store
+Thumbs.db
+desktop.ini

@@ -1,0 +1,206 @@
+{
+    "client": "Thunder Client",
+    "collectionName": "AutoPrime - Concessionária",
+    "dateExported": "2026-10-16T18:00:00.000Z",
+    "version": "1.1",
+    "folders": [],
+    "requests": [
+        {
+            "_id": "req-001",
+            "colId": "col-autoprime",
+            "containerId": "",
+            "name": "[GET] 1. Listar Todos os Veículos",
+            "url": "http://localhost:3000/veiculos",
+            "method": "GET",
+            "sortNum": 10000,
+            "created": "2026-10-16T18:00:00.000Z",
+            "modified": "2026-10-16T18:00:00.000Z",
+            "headers": [],
+            "params": [],
+            "body": {
+                "type": "json",
+                "raw": "",
+                "form": []
+            },
+            "tests": []
+        },
+        {
+            "_id": "req-002",
+            "colId": "col-autoprime",
+            "containerId": "",
+            "name": "[GET] 2. Buscar Veículo por ID (ex: #1)",
+            "url": "http://localhost:3000/veiculos/1",
+            "method": "GET",
+            "sortNum": 20000,
+            "created": "2026-10-16T18:00:00.000Z",
+            "modified": "2026-10-16T18:00:00.000Z",
+            "headers": [],
+            "params": [],
+            "body": {
+                "type": "json",
+                "raw": "",
+                "form": []
+            },
+            "tests": []
+        },
+        {
+            "_id": "req-003",
+            "colId": "col-autoprime",
+            "containerId": "",
+            "name": "[GET] 3. Filtrar por Fabricante ou Modelo",
+            "url": "http://localhost:3000/veiculos?fabricante=Toyota&busca=Corolla",
+            "method": "GET",
+            "sortNum": 25000,
+            "created": "2026-10-16T18:00:00.000Z",
+            "modified": "2026-10-16T18:00:00.000Z",
+            "headers": [],
+            "params": [
+                {
+                    "name": "fabricante",
+                    "value": "Toyota",
+                    "isPath": false
+                },
+                {
+                    "name": "busca",
+                    "value": "Corolla",
+                    "isPath": false
+                }
+            ],
+            "body": {
+                "type": "json",
+                "raw": "",
+                "form": []
+            },
+            "tests": []
+        },
+        {
+            "_id": "req-004",
+            "colId": "col-autoprime",
+            "containerId": "",
+            "name": "[GET] 4. Resumo Estatístico do Estoque",
+            "url": "http://localhost:3000/veiculos/resumo",
+            "method": "GET",
+            "sortNum": 28000,
+            "created": "2026-10-16T18:00:00.000Z",
+            "modified": "2026-10-16T18:00:00.000Z",
+            "headers": [],
+            "params": [],
+            "body": {
+                "type": "json",
+                "raw": "",
+                "form": []
+            },
+            "tests": []
+        },
+        {
+            "_id": "req-005",
+            "colId": "col-autoprime",
+            "containerId": "",
+            "name": "[POST] 5. Cadastrar Novo Veículo",
+            "url": "http://localhost:3000/veiculos",
+            "method": "POST",
+            "sortNum": 30000,
+            "created": "2026-10-16T18:00:00.000Z",
+            "modified": "2026-10-16T18:00:00.000Z",
+            "headers": [
+                {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                }
+            ],
+            "params": [],
+            "body": {
+                "type": "json",
+                "raw": "{\n    \"modelo\": \"Hilux SRX Plus 4x4\",\n    \"fabricante\": \"Toyota\",\n    \"ano\": 2024,\n    \"quilometragem\": 15000,\n    \"preco\": 334900.00\n}",
+                "form": []
+            },
+            "tests": []
+        },
+        {
+            "_id": "req-006",
+            "colId": "col-autoprime",
+            "containerId": "",
+            "name": "[PUT] 6. Atualizar Veículo por ID (ex: #1)",
+            "url": "http://localhost:3000/veiculos/1",
+            "method": "PUT",
+            "sortNum": 40000,
+            "created": "2026-10-16T18:00:00.000Z",
+            "modified": "2026-10-16T18:00:00.000Z",
+            "headers": [
+                {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                }
+            ],
+            "params": [],
+            "body": {
+                "type": "json",
+                "raw": "{\n    \"modelo\": \"Corolla Altis Premium Híbrido\",\n    \"fabricante\": \"Toyota\",\n    \"ano\": 2024,\n    \"quilometragem\": 8500,\n    \"preco\": 182900.00\n}",
+                "form": []
+            },
+            "tests": []
+        },
+        {
+            "_id": "req-007",
+            "colId": "col-autoprime",
+            "containerId": "",
+            "name": "[DELETE] 7. Excluir Veículo por ID (ex: #8)",
+            "url": "http://localhost:3000/veiculos/8",
+            "method": "DELETE",
+            "sortNum": 50000,
+            "created": "2026-10-16T18:00:00.000Z",
+            "modified": "2026-10-16T18:00:00.000Z",
+            "headers": [],
+            "params": [],
+            "body": {
+                "type": "json",
+                "raw": "",
+                "form": []
+            },
+            "tests": []
+        },
+        {
+            "_id": "req-008",
+            "colId": "col-autoprime",
+            "containerId": "",
+            "name": "[GET] 8. Teste de Veículo Inexistente (404)",
+            "url": "http://localhost:3000/veiculos/9999",
+            "method": "GET",
+            "sortNum": 60000,
+            "created": "2026-10-16T18:00:00.000Z",
+            "modified": "2026-10-16T18:00:00.000Z",
+            "headers": [],
+            "params": [],
+            "body": {
+                "type": "json",
+                "raw": "",
+                "form": []
+            },
+            "tests": []
+        },
+        {
+            "_id": "req-009",
+            "colId": "col-autoprime",
+            "containerId": "",
+            "name": "[POST] 9. Teste de Validação Inválida (400)",
+            "url": "http://localhost:3000/veiculos",
+            "method": "POST",
+            "sortNum": 70000,
+            "created": "2026-10-16T18:00:00.000Z",
+            "modified": "2026-10-16T18:00:00.000Z",
+            "headers": [
+                {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                }
+            ],
+            "params": [],
+            "body": {
+                "type": "json",
+                "raw": "{\n    \"modelo\": \"\",\n    \"fabricante\": \"\",\n    \"ano\": 1800,\n    \"quilometragem\": -50,\n    \"preco\": 0\n}",
+                "form": []
+            },
+            "tests": []
+        }
+    ]
+}

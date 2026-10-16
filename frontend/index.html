@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoPrime | Gestão de Concessionária</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🚗</text></svg>">
+</head>
+<body>
+    <header class="topo">
+        <div class="marca">
+            <span class="marca-icone">🚗</span>
+            <div>
+                <strong>AutoPrime Motors</strong>
+                <small>SISTEMA CONCESSIONÁRIA</small>
+            </div>
+        </div>
+        <div class="status-grupo">
+            <span class="badge-modo" id="badgeModoBanco">Verificando status...</span>
+            <span class="status"><span></span> Online</span>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- Boas-vindas -->
+        <section class="boas-vindas">
+            <div>
+                <p class="sobretitulo">PAINEL DE CONTROLE</p>
+                <h1>Estoque de Veículos</h1>
+                <p class="subtitulo">Gerencie entradas, atualizações e vendas de automóveis em tempo real.</p>
+            </div>
+            <div class="icone-carro">🏎️</div>
+        </section>
+
+        <!-- Cards de Resumo -->
+        <section class="resumo">
+            <article class="cartao-resumo">
+                <span class="resumo-icone">🚘</span>
+                <div>
+                    <p>Veículos no estoque</p>
+                    <strong id="totalVeiculos">0</strong>
+                </div>
+            </article>
+            <article class="cartao-resumo">
+                <span class="resumo-icone">🛣️</span>
+                <div>
+                    <p>Quilometragem média</p>
+                    <strong id="mediaKm">0 km</strong>
+                </div>
+            </article>
+            <article class="cartao-resumo">
+                <span class="resumo-icone">💵</span>
+                <div>
+                    <p>Valor total do estoque</p>
+                    <strong id="valorEstoque">R$ 0,00</strong>
+                </div>
+            </article>
+        </section>
+
+        <!-- Formulário de Cadastro / Edição -->
+        <section class="painel">
+            <div class="painel-titulo">
+                <div>
+                    <h2 id="tituloFormulario">Cadastrar novo veículo</h2>
+                    <p>Preencha os dados do automóvel para registrar ou atualizar no catálogo.</p>
+                </div>
+                <span class="etiqueta" id="etiquetaForm">NOVO REGISTRO</span>
+            </div>
+            <form id="formVeiculo">
+                <div class="campos">
+                    <div class="campo">
+                        <label for="modelo">Modelo *</label>
+                        <input type="text" id="modelo" placeholder="Ex.: Corolla XEi 2.0" required maxlength="100">
+                    </div>
+                    <div class="campo">
+                        <label for="fabricante">Fabricante *</label>
+                        <input type="text" id="fabricante" placeholder="Ex.: Toyota" required maxlength="100">
+                    </div>
+                    <div class="campo">
+                        <label for="ano">Ano *</label>
+                        <input type="number" id="ano" placeholder="2024" min="1900" max="2027" required>
+                    </div>
+                    <div class="campo">
+                        <label for="quilometragem">Quilometragem (km) *</label>
+                        <input type="number" id="quilometragem" placeholder="12000" min="0" required>
+                    </div>
+                    <div class="campo campo-preco">
+                        <label for="preco">Preço de Venda (R$) *</label>
+                        <input type="number" id="preco" placeholder="158900.00" min="1" step="0.01" required>
+                    </div>
+                </div>
+                <div class="acoes-form">
+                    <button type="submit" class="botao-principal" id="btnSalvar">＋ Cadastrar veículo</button>
+                    <button type="button" class="botao-secundario escondido" id="btnCancelar">Cancelar edição</button>
+                    <button type="button" class="botao-link" id="btnLimpar">Limpar campos</button>
+                </div>
+            </form>
+        </section>
+
+        <!-- Painel de Estoque -->
+        <section class="painel estoque">
+            <div class="painel-titulo estoque-titulo">
+                <div>
+                    <h2>Catálogo da Concessionária</h2>
+                    <p>Filtre, consulte detalhes e faça manutenções no estoque.</p>
+                </div>
+                <button type="button" class="botao-secundario" id="btnAtualizar">↻ Sincronizar</button>
+            </div>
+
+            <!-- Barra de Filtros e Busca -->
+            <div class="barra-filtros">
+                <div class="busca-input-wrapper">
+                    <span class="busca-icone">🔍</span>
+                    <input type="text" id="campoBusca" placeholder="Buscar por modelo ou fabricante...">
+                </div>
+                <div class="filtros-acoes">
+                    <select id="filtroFabricante">
+                        <option value="">Todos os fabricantes</option>
+                    </select>
+                    <select id="filtroOrdenacao">
+                        <option value="id_desc">Mais recentes (Padrão)</option>
+                        <option value="preco_asc">Menor preço</option>
+                        <option value="preco_desc">Maior preço</option>
+                        <option value="ano_desc">Mais novos (Ano)</option>
+                        <option value="km_asc">Menor KM</option>
+                    </select>
+                </div>
+            </div>
+
+            <p id="mensagem" class="mensagem" role="status"></p>
+
+            <div class="tabela-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Veículo & Fabricante</th>
+                            <th>Ano</th>
+                            <th>Quilometragem</th>
+                            <th>Preço</th>
+                            <th>Status</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="listaVeiculos">
+                        <tr>
+                            <td colspan="7" class="vazio">Carregando catálogo de veículos...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <footer>
+            AutoPrime Motors <span>•</span> Sistema de Gestão de Concessionária <span>•</span> API RESTful & VSCode Thunder Client
+        </footer>
+    </main>
+    <script src="script.js"></script>
+</body>
+</html>
