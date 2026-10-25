@@ -2,7 +2,7 @@ import express from "express";
 import "dotenv/config";
 import veiculosRoutes from "./routes/veiculosRoutes.js";
 import corsMiddleware from "./middlewares/corsMiddleware.js";
-import { testarConexao, obterModoAtivo } from "./database/conexao.js";
+import { testarConexao, obterModoAtivo, obterConfigConectada } from "./database/conexao.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -13,10 +13,21 @@ app.use(express.json());
 
 // Rota base / documentação rápida da API
 app.get("/", (req, res) => {
+    const config = obterConfigConectada();
     res.status(200).json({
         sistema: "AutoPrime - Gestão de Concessionária",
-        versao: "2.0.0",
+        versao: "2.5.0",
         modoBanco: obterModoAtivo(),
+        detalhesBanco: obterModoAtivo() === "mysql" ? {
+            status: "Conectado ao MySQL Workbench",
+            host: `${config.host}:${config.port}`,
+            banco: config.database,
+            tabela: "veiculos",
+            instrucaoWorkbench: "SELECT * FROM concessionaria.veiculos;"
+        } : {
+            status: "Armazenamento Local (Resiliente)",
+            arquivo: "backend/database/dados_locais.json"
+        },
         documentacao: {
             "GET    /veiculos":             "Lista todos os veículos (suporta ?busca= &fabricante= &preco_max= &ordenar=)",
             "GET    /veiculos/resumo":      "Estatísticas consolidadas do estoque (total, valor, km média)",
@@ -54,10 +65,16 @@ async function iniciarServidor() {
         const statusBanco = await testarConexao();
 
         app.listen(PORT, () => {
-            console.log("\n=============================================================");
+            console.log("=============================================================");
             console.log(`🚗 AutoPrime Concessionária - Servidor Ativo!`);
             console.log(`📡 URL Base:        http://localhost:${PORT}`);
-            console.log(`💾 Armazenamento:   ${statusBanco.modo === "mysql" ? "MySQL Database" : "Modo Local Resiliente (JSON)"}`);
+            if (statusBanco.modo === "mysql") {
+                console.log(`💾 Banco Ativo:     MYSQL WORKBENCH (CONECTADO) ✅`);
+                console.log(`   -> Tudo o que você alterar grava no MySQL Workbench!`);
+                console.log(`   -> Comando Workbench: SELECT * FROM concessionaria.veiculos;`);
+            } else {
+                console.log(`💾 Banco Ativo:     Modo Local Resiliente (JSON)`);
+            }
             console.log("-------------------------------------------------------------");
             console.log("⚡ Rotas prontas para Thunder Client & VSCode:");
             console.log(`   GET    http://localhost:${PORT}/veiculos`);

@@ -46,6 +46,12 @@ concessionaria/
 ├── thunder-tests/                          # Pasta nativa para sincronização no VSCode
 │   ├── thunder-collection_autoprime.json
 │   └── thunder-environment_autoprime.json
+├── GUIA_APRESENTACAO_ESCOLA.md             # 🎓 ROTEIRO COMPLETO PARA APRESENTAR NA ESCOLA
+├── verificar-mysql.bat                     # Teste rápido de conexão com o MySQL Workbench
+├── iniciar-servidor.bat                    # Inicializador em 1 clique
+├── resetar-dados.bat                       # Restaura os 8 veículos originais
+├── testar-api.bat                          # Executa os 15 testes automatizados
+├── subir-github.bat                        # Envia alterações para o GitHub
 └── README.md                               # Documentação completa
 ```
 

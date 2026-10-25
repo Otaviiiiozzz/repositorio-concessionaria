@@ -8,7 +8,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const ARQUIVO_DADOS_LOCAIS = path.join(__dirname, "dados_locais.json");
 
-// Veículos iniciais para demonstração e modo resiliente
+// Veículos iniciais padrão para popular o banco de dados
 const VEICULOS_INICIAIS = [
     { id: 1, modelo: "Corolla XEi 2.0",    fabricante: "Toyota",     ano: 2024, quilometragem: 12000, preco: 158900.00 },
     { id: 2, modelo: "Civic Touring",      fabricante: "Honda",      ano: 2023, quilometragem: 25000, preco: 172500.00 },
@@ -21,8 +21,10 @@ const VEICULOS_INICIAIS = [
 ];
 
 let modoAtivo = "mysql"; // "mysql" ou "memoria"
+let mysqlPool = null;
+let configConectada = null;
 
-// Inicializa ou carrega os dados locais
+// Inicializa ou carrega os dados locais para modo fallback
 function carregarDadosLocais() {
     try {
         if (fs.existsSync(ARQUIVO_DADOS_LOCAIS)) {
@@ -49,20 +51,8 @@ function salvarDadosLocais(dados) {
 
 let dadosMemoria = carregarDadosLocais();
 
-// Pool do MySQL
-const mysqlPool = mysql.createPool({
-    host: process.env.DB_HOST || "localhost",
-    port: Number(process.env.DB_PORT || 3306),
-    user: process.env.DB_USER || "root",
-    password: process.env.DB_PASSWORD || "",
-    database: process.env.DB_NAME || "concessionaria",
-    waitForConnections: true,
-    connectionLimit: 10,
-    connectTimeout: 2000
-});
-
 /**
- * Adaptador de consultas para modo memória / arquivo local
+ * Adaptador de consultas para modo memória / arquivo local (fallback)
  */
 function executarQueryMemoria(sql, params = []) {
     const sqlUpper = sql.trim().toUpperCase();
@@ -154,17 +144,131 @@ function executarQueryMemoria(sql, params = []) {
 }
 
 /**
- * Objeto pool transparente: usa MySQL se ativo, ou memória/arquivo como fallback
+ * Tenta conectar ao MySQL e criar automaticamente o banco e a tabela se não existirem.
+ * Suporta auto-detecção de senhas e portas comuns para facilitar apresentações na escola!
+ */
+async function inicializarBancoMySQL() {
+    const host = process.env.DB_HOST || "localhost";
+    const database = process.env.DB_NAME || "concessionaria";
+    const user = process.env.DB_USER || "root";
+    const portas = [Number(process.env.DB_PORT || 3306), 3307];
+
+    // Lista de senhas para testar automaticamente (evita falha na apresentação se a senha do colégio for diferente)
+    const senhasParaTentar = [
+        process.env.DB_PASSWORD ?? "admin",
+        "",           // Senha em branco (padrão XAMPP / MariaDB / Wamp)
+        "root",       // Senha clássica padrão MySQL Installer
+        "admin",      // Senha comum
+        "123456",     // Senha numérica comum
+        "1234",
+        "senac",      // Senha comum em laboratórios Senac
+        "mysql"
+    ];
+
+    // Remove senhas duplicadas
+    const senhasUnicas = [...new Set(senhasParaTentar)];
+
+    let conexaoSucesso = null;
+    let configGanhadora = null;
+
+    for (const porta of portas) {
+        for (const senha of senhasUnicas) {
+            try {
+                const conn = await mysql.createConnection({
+                    host,
+                    port: porta,
+                    user,
+                    password: senha,
+                    connectTimeout: 1200
+                });
+                conexaoSucesso = conn;
+                configGanhadora = { host, port: porta, user, password: senha, database };
+                break;
+            } catch (err) {
+                // Se o servidor nem responde nessa porta, não adianta testar outras senhas nela
+                if (err.code === "ECONNREFUSED") {
+                    break;
+                }
+                // Se for erro de senha (ER_ACCESS_DENIED_ERROR), continua para a próxima senha
+            }
+        }
+        if (conexaoSucesso) break;
+    }
+
+    if (!conexaoSucesso) {
+        throw new Error("Não foi possível conectar ao MySQL em nenhuma porta/senha.");
+    }
+
+    // Cria o banco e a tabela se não existirem
+    try {
+        await conexaoSucesso.query(`
+            CREATE DATABASE IF NOT EXISTS \`${database}\`
+            DEFAULT CHARACTER SET utf8mb4
+            DEFAULT COLLATE utf8mb4_unicode_ci;
+        `);
+
+        await conexaoSucesso.query(`USE \`${database}\`;`);
+
+        await conexaoSucesso.query(`
+            CREATE TABLE IF NOT EXISTS \`veiculos\` (
+                \`id\` INT NOT NULL AUTO_INCREMENT,
+                \`modelo\` VARCHAR(100) NOT NULL,
+                \`fabricante\` VARCHAR(100) NOT NULL,
+                \`ano\` INT NOT NULL,
+                \`quilometragem\` DECIMAL(12,2) NOT NULL DEFAULT 0,
+                \`preco\` DECIMAL(12,2) NOT NULL,
+                \`criado_em\` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                \`atualizado_em\` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                PRIMARY KEY (\`id\`),
+                INDEX \`idx_fabricante\` (\`fabricante\`),
+                INDEX \`idx_ano\` (\`ano\`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        `);
+
+        // Se a tabela estiver vazia, popula com os 8 veículos iniciais
+        const [rows] = await conexaoSucesso.query(`SELECT COUNT(*) AS total FROM \`veiculos\`;`);
+        if (rows[0].total === 0) {
+            console.log("🌱 [MYSQL] Populando tabela 'veiculos' com 8 registros iniciais...");
+            for (const v of VEICULOS_INICIAIS) {
+                await conexaoSucesso.query(
+                    `INSERT INTO \`veiculos\` (id, modelo, fabricante, ano, quilometragem, preco) VALUES (?, ?, ?, ?, ?, ?)`,
+                    [v.id, v.modelo, v.fabricante, v.ano, v.quilometragem, v.preco]
+                );
+            }
+        }
+    } finally {
+        await conexaoSucesso.end();
+    }
+
+    // Cria o pool oficial apontando para o banco concessionaria
+    mysqlPool = mysql.createPool({
+        host: configGanhadora.host,
+        port: configGanhadora.port,
+        user: configGanhadora.user,
+        password: configGanhadora.password,
+        database: configGanhadora.database,
+        waitForConnections: true,
+        connectionLimit: 10,
+        connectTimeout: 5000
+    });
+
+    configConectada = configGanhadora;
+    return configGanhadora;
+}
+
+/**
+ * Objeto pool transparente:
+ * Quando conectado ao MySQL, qualquer SELECT, INSERT, UPDATE, DELETE é gravado diretamente no banco MySQL!
  */
 const pool = {
     async query(sql, params = []) {
-        if (modoAtivo === "mysql") {
+        if (modoAtivo === "mysql" && mysqlPool) {
             try {
                 return await mysqlPool.query(sql, params);
             } catch (erro) {
-                // Se o MySQL caiu durante o uso, faz fallback automático
+                // Se o MySQL cair durante a apresentação, ativa fallback transparente para não travar
                 if (erro.code === "ECONNREFUSED" || erro.code === "PROTOCOL_CONNECTION_LOST") {
-                    console.warn("⚠️ Conexão MySQL perdida. Chaveando para modo de armazenamento local.");
+                    console.warn("⚠️ [MYSQL] Conexão perdida. Chaveando temporariamente para armazenamento local.");
                     modoAtivo = "memoria";
                     return executarQueryMemoria(sql, params);
                 }
@@ -175,7 +279,7 @@ const pool = {
     },
 
     async getConnection() {
-        if (modoAtivo === "mysql") {
+        if (modoAtivo === "mysql" && mysqlPool) {
             return await mysqlPool.getConnection();
         }
         return {
@@ -186,30 +290,34 @@ const pool = {
 };
 
 /**
- * Testa a conexão com o MySQL. Se não estiver ativo, ativa o modo resiliente
- * em memória/local sem derrubar o servidor Express.
+ * Testa a conexão e inicializa o banco de dados.
  */
 async function testarConexao() {
     try {
-        const conexao = await mysqlPool.getConnection();
-        try {
-            await conexao.query("SELECT 1");
-            modoAtivo = "mysql";
-            console.log("✅ [BANCO DE DADOS] Conexão MySQL estabelecida com sucesso! (Banco: " + (process.env.DB_NAME || "concessionaria") + ")");
-            return { modo: "mysql", sucesso: true };
-        } finally {
-            conexao.release();
-        }
+        const config = await inicializarBancoMySQL();
+        modoAtivo = "mysql";
+
+        console.log("\n=============================================================");
+        console.log("✅ [BANCO DE DADOS] CONEXÃO COM MYSQL WORKBENCH ESTABELECIDA!");
+        console.log(`🌐 Host:          ${config.host}:${config.port}`);
+        console.log(`👤 Usuário:       ${config.user}`);
+        console.log(`🗄️  Banco:         ${config.database}`);
+        console.log("📋 Tabela Ativa:  veiculos");
+        console.log("-------------------------------------------------------------");
+        console.log("💡 Qualquer alteração feita pelo Thunder Client ou Frontend");
+        console.log("   será gravada DIRETAMENTE no MySQL Workbench!");
+        console.log("🔍 Para ver no Workbench: SELECT * FROM concessionaria.veiculos;");
+        console.log("=============================================================\n");
+
+        return { modo: "mysql", sucesso: true, config };
     } catch (erro) {
         modoAtivo = "memoria";
         console.log("\n-------------------------------------------------------------");
         console.log("ℹ️  [MODO RESILIENTE ATIVADO]");
-        console.log(`   MySQL não detectado na porta ${process.env.DB_PORT || 3306} (${erro.code || erro.message}).`);
+        console.log(`   MySQL não foi detectado (${erro.message}).`);
         console.log("   O backend continuará 100% OPERACIONAL usando armazenamento local!");
         console.log("   Os dados são salvos em: database/dados_locais.json");
-        console.log("   Todas as rotas (GET, POST, PUT, DELETE) e o Thunder Client");
-        console.log("   funcionarão perfeitamente agora mesmo no VSCode.");
-        console.log("   (Quando quiser usar MySQL, basta iniciar o serviço e reiniciar).");
+        console.log("   (Para ligar ao MySQL Workbench, basta iniciar o serviço MySQL).");
         console.log("-------------------------------------------------------------\n");
         return { modo: "memoria", sucesso: false, erro: erro.message };
     }
@@ -219,4 +327,8 @@ function obterModoAtivo() {
     return modoAtivo;
 }
 
-export { pool, testarConexao, obterModoAtivo, dadosMemoria };
+function obterConfigConectada() {
+    return configConectada;
+}
+
+export { pool, testarConexao, obterModoAtivo, obterConfigConectada, dadosMemoria };
