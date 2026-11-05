@@ -18,7 +18,14 @@
         </div>
         <div class="status-grupo">
             <span class="badge-modo" id="badgeModoBanco">Verificando status...</span>
-            <span class="status"><span></span> Online</span>
+            <div id="areaAuth" class="area-auth">
+                <button type="button" class="btn-auth-login" id="btnAbrirLogin">🔑 Entrar / Cadastro</button>
+                <div id="usuarioLogadoCard" class="usuario-logado-card escondido">
+                    <span class="badge-perfil" id="badgePerfil">Admin</span>
+                    <strong id="nomeUsuarioLogado">Otávio</strong>
+                    <button type="button" class="btn-logout" id="btnLogout" title="Encerrar sessão">🚪 Sair</button>
+                </div>
+            </div>
         </div>
     </header>
 
@@ -26,9 +33,9 @@
         <!-- Boas-vindas -->
         <section class="boas-vindas">
             <div>
-                <p class="sobretitulo">PAINEL DE CONTROLE</p>
-                <h1>Estoque de Veículos</h1>
-                <p class="subtitulo">Gerencie entradas, atualizações e vendas de automóveis em tempo real.</p>
+                <p class="sobretitulo">PAINEL DE CONTROLE INTEGRADO</p>
+                <h1>Estoque de Veículos & Vendas</h1>
+                <p class="subtitulo">Gerenciamento comercial, controle de acesso baseado em perfis (JWT) e banco relacional MySQL.</p>
             </div>
             <div class="icone-carro">🏎️</div>
         </section>
@@ -63,7 +70,7 @@
             <div class="painel-titulo">
                 <div>
                     <h2 id="tituloFormulario">Cadastrar novo veículo</h2>
-                    <p>Preencha os dados do automóvel para registrar ou atualizar no catálogo.</p>
+                    <p id="subtituloFormulario">Preencha os dados do automóvel para registrar ou atualizar no catálogo (Requer perfil Vendedor ou Admin).</p>
                 </div>
                 <span class="etiqueta" id="etiquetaForm">NOVO REGISTRO</span>
             </div>
@@ -103,7 +110,7 @@
             <div class="painel-titulo estoque-titulo">
                 <div>
                     <h2>Catálogo da Concessionária</h2>
-                    <p>Filtre, consulte detalhes e faça manutenções no estoque.</p>
+                    <p>Filtre, consulte detalhes, faça propostas de negociação e gerencie o estoque.</p>
                 </div>
                 <button type="button" class="botao-secundario" id="btnAtualizar">↻ Sincronizar</button>
             </div>
@@ -152,10 +159,133 @@
             </div>
         </section>
 
+        <!-- Seção de Propostas (visível para usuários autenticados) -->
+        <section class="painel propostas-painel" id="painelPropostas">
+            <div class="painel-titulo">
+                <div>
+                    <h2 id="tituloPropostas">📋 Propostas & Negociações</h2>
+                    <p id="subtituloPropostas">Acompanhe as propostas de compra vinculadas aos veículos e clientes.</p>
+                </div>
+                <span class="etiqueta" id="badgeTotalPropostas">0 PROPOSTAS</span>
+            </div>
+            <div class="tabela-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Veículo</th>
+                            <th>Cliente</th>
+                            <th>Valor Ofertado</th>
+                            <th>Pagamento</th>
+                            <th>Status</th>
+                            <th>Data</th>
+                            <th>Ação</th>
+                        </tr>
+                    </thead>
+                    <tbody id="listaPropostas">
+                        <tr>
+                            <td colspan="8" class="vazio">Faça login para visualizar suas propostas e negociações.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
         <footer>
-            AutoPrime Motors <span>•</span> Sistema de Gestão de Concessionária <span>•</span> API RESTful & VSCode Thunder Client
+            AutoPrime Motors <span>•</span> Sistema de Gestão de Concessionária <span>•</span> Node.js, Express, MySQL & Autenticação JWT
         </footer>
     </main>
+
+    <!-- Modal de Login & Cadastro -->
+    <div class="modal-overlay escondido" id="modalAuth">
+        <div class="modal-card">
+            <button type="button" class="modal-fechar" id="btnFecharModalAuth">✕</button>
+            <div class="modal-abas">
+                <button type="button" class="modal-aba ativa" id="abaLogin">Entrar</button>
+                <button type="button" class="modal-aba" id="abaCadastro">Cadastrar</button>
+            </div>
+
+            <!-- Login Rápido para Apresentação Escolar -->
+            <div class="atalhos-demo">
+                <small>⚡ ACESSO RÁPIDO PARA DEMONSTRAÇÃO:</small>
+                <div class="botoes-demo">
+                    <button type="button" class="btn-demo admin" data-demo="admin">Admin</button>
+                    <button type="button" class="btn-demo vendedor" data-demo="vendedor">Vendedor</button>
+                    <button type="button" class="btn-demo cliente" data-demo="cliente">Cliente</button>
+                </div>
+            </div>
+
+            <!-- Formulário de Login -->
+            <form id="formLogin" class="form-modal">
+                <div class="campo-modal">
+                    <label for="loginEmail">E-mail *</label>
+                    <input type="email" id="loginEmail" placeholder="admin@autoprime.com" required>
+                </div>
+                <div class="campo-modal">
+                    <label for="loginSenha">Senha *</label>
+                    <input type="password" id="loginSenha" placeholder="••••••••" required>
+                </div>
+                <p id="mensagemLogin" class="mensagem-modal"></p>
+                <button type="submit" class="botao-principal largo" id="btnSubmitLogin">Entrar no Sistema</button>
+            </form>
+
+            <!-- Formulário de Cadastro -->
+            <form id="formCadastro" class="form-modal escondido">
+                <div class="campo-modal">
+                    <label for="cadNome">Nome Completo *</label>
+                    <input type="text" id="cadNome" placeholder="Ex.: Lucas Martins" required minlength="3">
+                </div>
+                <div class="campo-modal">
+                    <label for="cadEmail">E-mail *</label>
+                    <input type="email" id="cadEmail" placeholder="lucas@exemplo.com" required>
+                </div>
+                <div class="campo-modal">
+                    <label for="cadTelefone">Telefone (WhatsApp)</label>
+                    <input type="text" id="cadTelefone" placeholder="(51) 99999-8888">
+                </div>
+                <div class="campo-modal">
+                    <label for="cadSenha">Senha (mín. 6 caracteres) *</label>
+                    <input type="password" id="cadSenha" placeholder="••••••••" required minlength="6">
+                </div>
+                <p id="mensagemCad" class="mensagem-modal"></p>
+                <button type="submit" class="botao-principal largo" id="btnSubmitCad">Criar Minha Conta</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal de Envio de Proposta Comercial -->
+    <div class="modal-overlay escondido" id="modalProposta">
+        <div class="modal-card">
+            <button type="button" class="modal-fechar" id="btnFecharModalProposta">✕</button>
+            <div class="modal-header">
+                <h3>💬 Enviar Proposta de Compra</h3>
+                <p id="modalPropostaVeiculoNome">Corolla XEi 2.0</p>
+            </div>
+            <form id="formProposta" class="form-modal">
+                <input type="hidden" id="propostaVeiculoId">
+                <div class="campo-modal">
+                    <label for="propostaValor">Valor Ofertado (R$) *</label>
+                    <input type="number" id="propostaValor" step="0.01" min="1" required placeholder="150000.00">
+                </div>
+                <div class="campo-modal">
+                    <label for="propostaPagamento">Forma de Pagamento *</label>
+                    <select id="propostaPagamento" required>
+                        <option value="a_vista">À Vista (TED / Pix)</option>
+                        <option value="financiamento">Financiamento Bancário</option>
+                        <option value="consorcio">Carta de Consórcio</option>
+                        <option value="troca">Veículo na Troca + Saldo</option>
+                    </select>
+                </div>
+                <div class="campo-modal">
+                    <label for="propostaObs">Observações / Detalhes</label>
+                    <textarea id="propostaObs" rows="3" placeholder="Ex.: Entrada de R$ 40.000 + financiamento do saldo."></textarea>
+                </div>
+                <p id="mensagemProposta" class="mensagem-modal"></p>
+                <button type="submit" class="botao-principal largo" id="btnSubmitProposta">Enviar Proposta</button>
+            </form>
+        </div>
+    </div>
+
     <script src="script.js"></script>
 </body>
 </html>
