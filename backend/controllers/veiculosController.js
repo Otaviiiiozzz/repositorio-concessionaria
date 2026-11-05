@@ -150,11 +150,12 @@ async function cadastrarVeiculo(req, res) {
         return res.status(400).json({ mensagem: erroValidacao });
     }
 
-    const { modelo, fabricante, ano, quilometragem, preco } = req.body;
+    const { modelo, fabricante, ano, quilometragem, preco, categoria_id } = req.body;
+    const cadastradoPor = req.usuario ? req.usuario.id : null;
     try {
         const [resultado] = await pool.query(
-            "INSERT INTO veiculos (modelo, fabricante, ano, quilometragem, preco) VALUES (?, ?, ?, ?, ?)",
-            [modelo.trim(), fabricante.trim(), Number(ano), Number(quilometragem), Number(preco)]
+            "INSERT INTO veiculos (modelo, fabricante, ano, quilometragem, preco, status, categoria_id, cadastrado_por) VALUES (?, ?, ?, ?, ?, 'disponivel', ?, ?)",
+            [modelo.trim(), fabricante.trim(), Number(ano), Number(quilometragem), Number(preco), categoria_id ? Number(categoria_id) : null, cadastradoPor]
         );
 
         const novoVeiculo = {
@@ -163,7 +164,10 @@ async function cadastrarVeiculo(req, res) {
             fabricante: fabricante.trim(),
             ano: Number(ano),
             quilometragem: Number(quilometragem),
-            preco: Number(preco)
+            preco: Number(preco),
+            status: "disponivel",
+            categoria_id: categoria_id ? Number(categoria_id) : null,
+            cadastrado_por: cadastradoPor
         };
 
         res.status(201).json({

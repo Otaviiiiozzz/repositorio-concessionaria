@@ -1,7 +1,10 @@
 import express from "express";
 import "dotenv/config";
-import veiculosRoutes from "./routes/veiculosRoutes.js";
 import corsMiddleware from "./middlewares/corsMiddleware.js";
+import authRoutes from "./routes/authRoutes.js";
+import usuariosRoutes from "./routes/usuariosRoutes.js";
+import veiculosRoutes from "./routes/veiculosRoutes.js";
+import propostasRoutes from "./routes/propostasRoutes.js";
 import { testarConexao, obterModoAtivo, obterConfigConectada } from "./database/conexao.js";
 
 const app = express();
@@ -11,43 +14,76 @@ const PORT = process.env.PORT || 3000;
 app.use(corsMiddleware);
 app.use(express.json());
 
-// Rota base / documentação rápida da API
+// Rota base / documentação interativa da API
 app.get("/", (req, res) => {
     const config = obterConfigConectada();
     res.status(200).json({
-        sistema: "AutoPrime - Gestão de Concessionária",
-        versao: "2.5.0",
+        sistema: "AutoPrime Motors - Gestão de Concessionária",
+        versao: "3.0.0 (Entrega: Banco de Dados & Autenticação)",
+        status: "Online",
         modoBanco: obterModoAtivo(),
         detalhesBanco: obterModoAtivo() === "mysql" ? {
             status: "Conectado ao MySQL Workbench",
             host: `${config.host}:${config.port}`,
             banco: config.database,
-            tabela: "veiculos",
-            instrucaoWorkbench: "SELECT * FROM concessionaria.veiculos;"
+            tabelas: ["perfis", "usuarios", "categorias", "veiculos", "propostas"]
         } : {
-            status: "Armazenamento Local (Resiliente)",
+            status: "Armazenamento Local Resiliente (JSON)",
             arquivo: "backend/database/dados_locais.json"
         },
-        documentacao: {
-            "GET    /veiculos":             "Lista todos os veículos (suporta ?busca= &fabricante= &preco_max= &ordenar=)",
-            "GET    /veiculos/resumo":      "Estatísticas consolidadas do estoque (total, valor, km média)",
-            "GET    /veiculos/:id":         "Busca dados detalhados de um veículo por ID",
-            "POST   /veiculos":             "Cadastra um novo veículo no estoque",
-            "PUT    /veiculos/:id":         "Atualiza dados cadastrais de um veículo",
-            "DELETE /veiculos/:id":         "Remove um veículo do estoque"
+        perfisCadastrados: [
+            { id: 1, nome: "admin", descricao: "Acesso total, gestão de usuários e exclusão de estoque" },
+            { id: 2, nome: "vendedor", descricao: "Gestão do catálogo de veículos e aprovação de propostas" },
+            { id: 3, nome: "cliente", descricao: "Consulta ao catálogo e envio de propostas de compra" }
+        ],
+        usuariosTesteProntos: [
+            { perfil: "admin", email: "admin@autoprime.com", senhaPadrao: "admin123" },
+            { perfil: "vendedor", email: "vendedor@autoprime.com", senhaPadrao: "vendedor123" },
+            { perfil: "cliente", email: "cliente@autoprime.com", senhaPadrao: "cliente123" }
+        ],
+        rotas: {
+            autenticacao: {
+                "POST /auth/registrar": "Cadastro de novo usuário (senha protegida com bcrypt)",
+                "POST /auth/login":     "Login de usuário (retorna JWT assinado com perfil)",
+                "GET  /auth/me":        "Dados do usuário logado (Requer Bearer Token)",
+                "GET  /auth/perfis":    "Lista perfis de acesso"
+            },
+            usuarios: {
+                "GET   /usuarios":            "Lista usuários (Requer perfil 'admin')",
+                "POST  /usuarios":            "Cria usuário com perfil específico (Requer 'admin')",
+                "GET   /usuarios/:id":        "Dados de um usuário (Admin ou próprio usuário)",
+                "PATCH /usuarios/:id/status": "Ativa ou inativa usuário (Requer 'admin')"
+            },
+            veiculos: {
+                "GET    /veiculos":        "Lista veículos com filtros (?busca= &fabricante= &preco_max= &ordenar=)",
+                "GET    /veiculos/resumo": "Métricas consolidadas do estoque (total, valor, km média)",
+                "GET    /veiculos/:id":    "Detalhes de um veículo específico",
+                "POST   /veiculos":        "Cadastra veículo no estoque (Requer 'admin' ou 'vendedor')",
+                "PUT    /veiculos/:id":    "Atualiza dados cadastrais (Requer 'admin' ou 'vendedor')",
+                "DELETE /veiculos/:id":    "Remove veículo do estoque (Requer 'admin')"
+            },
+            propostas: {
+                "POST  /propostas":           "Envia proposta de compra para veículo (Requer autenticação)",
+                "GET   /propostas/minhas":    "Lista propostas enviadas pelo cliente logado",
+                "GET   /propostas":           "Lista todas as propostas (Requer 'admin' ou 'vendedor')",
+                "PATCH /propostas/:id/status": "Atualiza status da proposta (Requer 'admin' ou 'vendedor')"
+            }
         }
     });
 });
 
-// Rotas da entidade Veículos
+// Rotas dos módulos
+app.use("/auth", authRoutes);
+app.use("/usuarios", usuariosRoutes);
 app.use("/veiculos", veiculosRoutes);
+app.use("/propostas", propostasRoutes);
 
 // Tratamento para rotas inexistentes (404)
 app.use((req, res) => {
     res.status(404).json({
         erro: "Rota não encontrada",
         mensagem: `A rota ${req.method} ${req.url} não existe nesta API.`,
-        rotasValidas: ["/veiculos", "/veiculos/resumo", "/veiculos/:id"]
+        documentacao: "/"
     });
 });
 
@@ -66,23 +102,20 @@ async function iniciarServidor() {
 
         app.listen(PORT, () => {
             console.log("=============================================================");
-            console.log(`🚗 AutoPrime Concessionária - Servidor Ativo!`);
+            console.log(`🚗 AutoPrime Motors - Sistema Concessionária Ativo!`);
             console.log(`📡 URL Base:        http://localhost:${PORT}`);
             if (statusBanco.modo === "mysql") {
                 console.log(`💾 Banco Ativo:     MYSQL WORKBENCH (CONECTADO) ✅`);
-                console.log(`   -> Tudo o que você alterar grava no MySQL Workbench!`);
-                console.log(`   -> Comando Workbench: SELECT * FROM concessionaria.veiculos;`);
+                console.log(`   -> Tabelas:      perfis, usuarios, categorias, veiculos, propostas`);
             } else {
                 console.log(`💾 Banco Ativo:     Modo Local Resiliente (JSON)`);
+                console.log(`   -> Arquivo:      database/dados_locais.json`);
             }
             console.log("-------------------------------------------------------------");
-            console.log("⚡ Rotas prontas para Thunder Client & VSCode:");
-            console.log(`   GET    http://localhost:${PORT}/veiculos`);
-            console.log(`   GET    http://localhost:${PORT}/veiculos/resumo`);
-            console.log(`   GET    http://localhost:${PORT}/veiculos/1`);
-            console.log(`   POST   http://localhost:${PORT}/veiculos`);
-            console.log(`   PUT    http://localhost:${PORT}/veiculos/1`);
-            console.log(`   DELETE http://localhost:${PORT}/veiculos/1`);
+            console.log("🔑 Autenticação & JWT habilitados:");
+            console.log("   Admin:    admin@autoprime.com    / admin123");
+            console.log("   Vendedor: vendedor@autoprime.com / vendedor123");
+            console.log("   Cliente:  cliente@autoprime.com  / cliente123");
             console.log("=============================================================\n");
         });
     } catch (erro) {
