@@ -28,8 +28,9 @@ echo.
 echo =============================================================
 echo 🔍 Testando conexao com o banco...
 echo =============================================================
+cd /d "%~dp0backend"
 node -e "
-import('./backend/database/conexao.js').then(async m => {
+import('./database/conexao.js').then(async m => {
     const res = await m.testarConexao();
     if (res.modo === 'mysql') {
         console.log('\n🎉 O SERVIDOR MYSQL ESTA PRONTO E CONECTADO!');

@@ -1,203 +1,427 @@
 {
     "client": "Thunder Client",
-    "collectionName": "AutoPrime - Concessionária",
-    "dateExported": "2026-10-16T18:00:00.000Z",
+    "collectionName": "AutoPrime - Concessionária & Autenticação",
+    "dateExported": "2026-11-05T18:00:00.000Z",
     "version": "1.1",
-    "folders": [],
+    "folders": [
+        {
+            "_id": "fld-auth",
+            "name": "1. Autenticação & Perfis (JWT)",
+            "containerId": "",
+            "created": "2026-11-05T18:00:00.000Z",
+            "sortNum": 10000
+        },
+        {
+            "_id": "fld-veiculos",
+            "name": "2. Veículos (Catálogo & Estoque)",
+            "containerId": "",
+            "created": "2026-11-05T18:00:00.000Z",
+            "sortNum": 20000
+        },
+        {
+            "_id": "fld-usuarios",
+            "name": "3. Gestão de Usuários (RBAC Admin)",
+            "containerId": "",
+            "created": "2026-11-05T18:00:00.000Z",
+            "sortNum": 30000
+        },
+        {
+            "_id": "fld-propostas",
+            "name": "4. Propostas de Compra (Relacional)",
+            "containerId": "",
+            "created": "2026-11-05T18:00:00.000Z",
+            "sortNum": 40000
+        }
+    ],
     "requests": [
         {
-            "_id": "req-001",
+            "_id": "req-auth-01",
             "colId": "col-autoprime",
-            "containerId": "",
-            "name": "[GET] 1. Listar Todos os Veículos",
-            "url": "http://localhost:3000/veiculos",
-            "method": "GET",
-            "sortNum": 10000,
-            "created": "2026-10-16T18:00:00.000Z",
-            "modified": "2026-10-16T18:00:00.000Z",
-            "headers": [],
-            "params": [],
-            "body": {
-                "type": "json",
-                "raw": "",
-                "form": []
-            },
-            "tests": []
-        },
-        {
-            "_id": "req-002",
-            "colId": "col-autoprime",
-            "containerId": "",
-            "name": "[GET] 2. Buscar Veículo por ID (ex: #1)",
-            "url": "http://localhost:3000/veiculos/1",
-            "method": "GET",
-            "sortNum": 20000,
-            "created": "2026-10-16T18:00:00.000Z",
-            "modified": "2026-10-16T18:00:00.000Z",
-            "headers": [],
-            "params": [],
-            "body": {
-                "type": "json",
-                "raw": "",
-                "form": []
-            },
-            "tests": []
-        },
-        {
-            "_id": "req-003",
-            "colId": "col-autoprime",
-            "containerId": "",
-            "name": "[GET] 3. Filtrar por Fabricante ou Modelo",
-            "url": "http://localhost:3000/veiculos?fabricante=Toyota&busca=Corolla",
-            "method": "GET",
-            "sortNum": 25000,
-            "created": "2026-10-16T18:00:00.000Z",
-            "modified": "2026-10-16T18:00:00.000Z",
-            "headers": [],
-            "params": [
-                {
-                    "name": "fabricante",
-                    "value": "Toyota",
-                    "isPath": false
-                },
-                {
-                    "name": "busca",
-                    "value": "Corolla",
-                    "isPath": false
-                }
-            ],
-            "body": {
-                "type": "json",
-                "raw": "",
-                "form": []
-            },
-            "tests": []
-        },
-        {
-            "_id": "req-004",
-            "colId": "col-autoprime",
-            "containerId": "",
-            "name": "[GET] 4. Resumo Estatístico do Estoque",
-            "url": "http://localhost:3000/veiculos/resumo",
-            "method": "GET",
-            "sortNum": 28000,
-            "created": "2026-10-16T18:00:00.000Z",
-            "modified": "2026-10-16T18:00:00.000Z",
-            "headers": [],
-            "params": [],
-            "body": {
-                "type": "json",
-                "raw": "",
-                "form": []
-            },
-            "tests": []
-        },
-        {
-            "_id": "req-005",
-            "colId": "col-autoprime",
-            "containerId": "",
-            "name": "[POST] 5. Cadastrar Novo Veículo",
-            "url": "http://localhost:3000/veiculos",
+            "containerId": "fld-auth",
+            "name": "[POST] 1. Cadastrar Novo Usuário (Público)",
+            "url": "{{baseUrl}}/auth/registrar",
             "method": "POST",
-            "sortNum": 30000,
-            "created": "2026-10-16T18:00:00.000Z",
-            "modified": "2026-10-16T18:00:00.000Z",
+            "sortNum": 10010,
+            "created": "2026-11-05T18:00:00.000Z",
+            "modified": "2026-11-05T18:00:00.000Z",
+            "headers": [],
+            "params": [],
+            "body": {
+                "type": "json",
+                "raw": "{\n  \"nome\": \"Gabriel Monteiro\",\n  \"email\": \"gabriel@email.com\",\n  \"senha\": \"senhaForte123\",\n  \"telefone\": \"(51) 99887-1122\"\n}",
+                "form": []
+            },
+            "tests": []
+        },
+        {
+            "_id": "req-auth-02",
+            "colId": "col-autoprime",
+            "containerId": "fld-auth",
+            "name": "[POST] 2. Login - Administrador",
+            "url": "{{baseUrl}}/auth/login",
+            "method": "POST",
+            "sortNum": 10020,
+            "created": "2026-11-05T18:00:00.000Z",
+            "modified": "2026-11-05T18:00:00.000Z",
+            "headers": [],
+            "params": [],
+            "body": {
+                "type": "json",
+                "raw": "{\n  \"email\": \"admin@autoprime.com\",\n  \"senha\": \"admin123\"\n}",
+                "form": []
+            },
+            "tests": []
+        },
+        {
+            "_id": "req-auth-03",
+            "colId": "col-autoprime",
+            "containerId": "fld-auth",
+            "name": "[POST] 3. Login - Vendedor",
+            "url": "{{baseUrl}}/auth/login",
+            "method": "POST",
+            "sortNum": 10030,
+            "created": "2026-11-05T18:00:00.000Z",
+            "modified": "2026-11-05T18:00:00.000Z",
+            "headers": [],
+            "params": [],
+            "body": {
+                "type": "json",
+                "raw": "{\n  \"email\": \"vendedor@autoprime.com\",\n  \"senha\": \"vendedor123\"\n}",
+                "form": []
+            },
+            "tests": []
+        },
+        {
+            "_id": "req-auth-04",
+            "colId": "col-autoprime",
+            "containerId": "fld-auth",
+            "name": "[POST] 4. Login - Cliente",
+            "url": "{{baseUrl}}/auth/login",
+            "method": "POST",
+            "sortNum": 10040,
+            "created": "2026-11-05T18:00:00.000Z",
+            "modified": "2026-11-05T18:00:00.000Z",
+            "headers": [],
+            "params": [],
+            "body": {
+                "type": "json",
+                "raw": "{\n  \"email\": \"cliente@autoprime.com\",\n  \"senha\": \"cliente123\"\n}",
+                "form": []
+            },
+            "tests": []
+        },
+        {
+            "_id": "req-auth-05",
+            "colId": "col-autoprime",
+            "containerId": "fld-auth",
+            "name": "[GET] 5. Me - Dados do Usuário Logado (JWT)",
+            "url": "{{baseUrl}}/auth/me",
+            "method": "GET",
+            "sortNum": 10050,
+            "created": "2026-11-05T18:00:00.000Z",
+            "modified": "2026-11-05T18:00:00.000Z",
             "headers": [
                 {
-                    "name": "Content-Type",
-                    "value": "application/json"
+                    "name": "Authorization",
+                    "value": "Bearer {{tokenAdmin}}"
                 }
             ],
             "params": [],
             "body": {
                 "type": "json",
-                "raw": "{\n    \"modelo\": \"Hilux SRX Plus 4x4\",\n    \"fabricante\": \"Toyota\",\n    \"ano\": 2024,\n    \"quilometragem\": 15000,\n    \"preco\": 334900.00\n}",
+                "raw": "",
                 "form": []
             },
             "tests": []
         },
         {
-            "_id": "req-006",
+            "_id": "req-auth-06",
             "colId": "col-autoprime",
-            "containerId": "",
-            "name": "[PUT] 6. Atualizar Veículo por ID (ex: #1)",
-            "url": "http://localhost:3000/veiculos/1",
+            "containerId": "fld-auth",
+            "name": "[GET] 6. Listar Perfis de Acesso (RBAC)",
+            "url": "{{baseUrl}}/auth/perfis",
+            "method": "GET",
+            "sortNum": 10060,
+            "created": "2026-11-05T18:00:00.000Z",
+            "modified": "2026-11-05T18:00:00.000Z",
+            "headers": [],
+            "params": [],
+            "body": {
+                "type": "json",
+                "raw": "",
+                "form": []
+            },
+            "tests": []
+        },
+        {
+            "_id": "req-veic-01",
+            "colId": "col-autoprime",
+            "containerId": "fld-veiculos",
+            "name": "[GET] 1. Listar Catálogo (Público)",
+            "url": "{{baseUrl}}/veiculos",
+            "method": "GET",
+            "sortNum": 20010,
+            "created": "2026-11-05T18:00:00.000Z",
+            "modified": "2026-11-05T18:00:00.000Z",
+            "headers": [],
+            "params": [],
+            "body": {
+                "type": "json",
+                "raw": "",
+                "form": []
+            },
+            "tests": []
+        },
+        {
+            "_id": "req-veic-02",
+            "colId": "col-autoprime",
+            "containerId": "fld-veiculos",
+            "name": "[GET] 2. Resumo Estatístico do Estoque",
+            "url": "{{baseUrl}}/veiculos/resumo",
+            "method": "GET",
+            "sortNum": 20020,
+            "created": "2026-11-05T18:00:00.000Z",
+            "modified": "2026-11-05T18:00:00.000Z",
+            "headers": [],
+            "params": [],
+            "body": {
+                "type": "json",
+                "raw": "",
+                "form": []
+            },
+            "tests": []
+        },
+        {
+            "_id": "req-veic-03",
+            "colId": "col-autoprime",
+            "containerId": "fld-veiculos",
+            "name": "[GET] 3. Buscar Veículo por ID",
+            "url": "{{baseUrl}}/veiculos/1",
+            "method": "GET",
+            "sortNum": 20030,
+            "created": "2026-11-05T18:00:00.000Z",
+            "modified": "2026-11-05T18:00:00.000Z",
+            "headers": [],
+            "params": [],
+            "body": {
+                "type": "json",
+                "raw": "",
+                "form": []
+            },
+            "tests": []
+        },
+        {
+            "_id": "req-veic-04",
+            "colId": "col-autoprime",
+            "containerId": "fld-veiculos",
+            "name": "[POST] 4. Cadastrar Veículo (Vendedor/Admin)",
+            "url": "{{baseUrl}}/veiculos",
+            "method": "POST",
+            "sortNum": 20040,
+            "created": "2026-11-05T18:00:00.000Z",
+            "modified": "2026-11-05T18:00:00.000Z",
+            "headers": [
+                {
+                    "name": "Authorization",
+                    "value": "Bearer {{tokenVendedor}}"
+                }
+            ],
+            "params": [],
+            "body": {
+                "type": "json",
+                "raw": "{\n  \"modelo\": \"Hilux GR-Sport 4x4\",\n  \"fabricante\": \"Toyota\",\n  \"ano\": 2024,\n  \"quilometragem\": 8500,\n  \"preco\": 349900.00,\n  \"categoria_id\": 4\n}",
+                "form": []
+            },
+            "tests": []
+        },
+        {
+            "_id": "req-veic-05",
+            "colId": "col-autoprime",
+            "containerId": "fld-veiculos",
+            "name": "[PUT] 5. Atualizar Veículo (Vendedor/Admin)",
+            "url": "{{baseUrl}}/veiculos/1",
             "method": "PUT",
-            "sortNum": 40000,
-            "created": "2026-10-16T18:00:00.000Z",
-            "modified": "2026-10-16T18:00:00.000Z",
+            "sortNum": 20050,
+            "created": "2026-11-05T18:00:00.000Z",
+            "modified": "2026-11-05T18:00:00.000Z",
             "headers": [
                 {
-                    "name": "Content-Type",
-                    "value": "application/json"
+                    "name": "Authorization",
+                    "value": "Bearer {{tokenVendedor}}"
                 }
             ],
             "params": [],
             "body": {
                 "type": "json",
-                "raw": "{\n    \"modelo\": \"Corolla Altis Premium Híbrido\",\n    \"fabricante\": \"Toyota\",\n    \"ano\": 2024,\n    \"quilometragem\": 8500,\n    \"preco\": 182900.00\n}",
+                "raw": "{\n  \"modelo\": \"Corolla XEi 2.0 Premium\",\n  \"fabricante\": \"Toyota\",\n  \"ano\": 2024,\n  \"quilometragem\": 11500,\n  \"preco\": 161900.00\n}",
                 "form": []
             },
             "tests": []
         },
         {
-            "_id": "req-007",
+            "_id": "req-veic-06",
             "colId": "col-autoprime",
-            "containerId": "",
-            "name": "[DELETE] 7. Excluir Veículo por ID (ex: #8)",
-            "url": "http://localhost:3000/veiculos/8",
+            "containerId": "fld-veiculos",
+            "name": "[DELETE] 6. Excluir Veículo (Apenas Admin)",
+            "url": "{{baseUrl}}/veiculos/8",
             "method": "DELETE",
-            "sortNum": 50000,
-            "created": "2026-10-16T18:00:00.000Z",
-            "modified": "2026-10-16T18:00:00.000Z",
-            "headers": [],
-            "params": [],
-            "body": {
-                "type": "json",
-                "raw": "",
-                "form": []
-            },
-            "tests": []
-        },
-        {
-            "_id": "req-008",
-            "colId": "col-autoprime",
-            "containerId": "",
-            "name": "[GET] 8. Teste de Veículo Inexistente (404)",
-            "url": "http://localhost:3000/veiculos/9999",
-            "method": "GET",
-            "sortNum": 60000,
-            "created": "2026-10-16T18:00:00.000Z",
-            "modified": "2026-10-16T18:00:00.000Z",
-            "headers": [],
-            "params": [],
-            "body": {
-                "type": "json",
-                "raw": "",
-                "form": []
-            },
-            "tests": []
-        },
-        {
-            "_id": "req-009",
-            "colId": "col-autoprime",
-            "containerId": "",
-            "name": "[POST] 9. Teste de Validação Inválida (400)",
-            "url": "http://localhost:3000/veiculos",
-            "method": "POST",
-            "sortNum": 70000,
-            "created": "2026-10-16T18:00:00.000Z",
-            "modified": "2026-10-16T18:00:00.000Z",
+            "sortNum": 20060,
+            "created": "2026-11-05T18:00:00.000Z",
+            "modified": "2026-11-05T18:00:00.000Z",
             "headers": [
                 {
-                    "name": "Content-Type",
-                    "value": "application/json"
+                    "name": "Authorization",
+                    "value": "Bearer {{tokenAdmin}}"
                 }
             ],
             "params": [],
             "body": {
                 "type": "json",
-                "raw": "{\n    \"modelo\": \"\",\n    \"fabricante\": \"\",\n    \"ano\": 1800,\n    \"quilometragem\": -50,\n    \"preco\": 0\n}",
+                "raw": "",
+                "form": []
+            },
+            "tests": []
+        },
+        {
+            "_id": "req-user-01",
+            "colId": "col-autoprime",
+            "containerId": "fld-usuarios",
+            "name": "[GET] 1. Listar Usuários (Apenas Admin)",
+            "url": "{{baseUrl}}/usuarios",
+            "method": "GET",
+            "sortNum": 30010,
+            "created": "2026-11-05T18:00:00.000Z",
+            "modified": "2026-11-05T18:00:00.000Z",
+            "headers": [
+                {
+                    "name": "Authorization",
+                    "value": "Bearer {{tokenAdmin}}"
+                }
+            ],
+            "params": [],
+            "body": {
+                "type": "json",
+                "raw": "",
+                "form": []
+            },
+            "tests": []
+        },
+        {
+            "_id": "req-user-02",
+            "colId": "col-autoprime",
+            "containerId": "fld-usuarios",
+            "name": "[POST] 2. Criar Vendedor pelo Admin",
+            "url": "{{baseUrl}}/usuarios",
+            "method": "POST",
+            "sortNum": 30020,
+            "created": "2026-11-05T18:00:00.000Z",
+            "modified": "2026-11-05T18:00:00.000Z",
+            "headers": [
+                {
+                    "name": "Authorization",
+                    "value": "Bearer {{tokenAdmin}}"
+                }
+            ],
+            "params": [],
+            "body": {
+                "type": "json",
+                "raw": "{\n  \"nome\": \"Roberto Silva\",\n  \"email\": \"roberto.vendas@autoprime.com\",\n  \"senha\": \"vendas1234\",\n  \"perfil_id\": 2,\n  \"telefone\": \"(51) 98111-2233\"\n}",
+                "form": []
+            },
+            "tests": []
+        },
+        {
+            "_id": "req-prop-01",
+            "colId": "col-autoprime",
+            "containerId": "fld-propostas",
+            "name": "[POST] 1. Enviar Proposta de Compra (Cliente)",
+            "url": "{{baseUrl}}/propostas",
+            "method": "POST",
+            "sortNum": 40010,
+            "created": "2026-11-05T18:00:00.000Z",
+            "modified": "2026-11-05T18:00:00.000Z",
+            "headers": [
+                {
+                    "name": "Authorization",
+                    "value": "Bearer {{tokenCliente}}"
+                }
+            ],
+            "params": [],
+            "body": {
+                "type": "json",
+                "raw": "{\n  \"veiculo_id\": 1,\n  \"valor_proposta\": 154000.00,\n  \"forma_pagamento\": \"financiamento\",\n  \"observacoes\": \"Entrada de R$ 50.000 + financiamento bancário do restante.\"\n}",
+                "form": []
+            },
+            "tests": []
+        },
+        {
+            "_id": "req-prop-02",
+            "colId": "col-autoprime",
+            "containerId": "fld-propostas",
+            "name": "[GET] 2. Minhas Propostas (Cliente Logado)",
+            "url": "{{baseUrl}}/propostas/minhas",
+            "method": "GET",
+            "sortNum": 40020,
+            "created": "2026-11-05T18:00:00.000Z",
+            "modified": "2026-11-05T18:00:00.000Z",
+            "headers": [
+                {
+                    "name": "Authorization",
+                    "value": "Bearer {{tokenCliente}}"
+                }
+            ],
+            "params": [],
+            "body": {
+                "type": "json",
+                "raw": "",
+                "form": []
+            },
+            "tests": []
+        },
+        {
+            "_id": "req-prop-03",
+            "colId": "col-autoprime",
+            "containerId": "fld-propostas",
+            "name": "[GET] 3. Listar Todas Propostas (Vendedor/Admin)",
+            "url": "{{baseUrl}}/propostas",
+            "method": "GET",
+            "sortNum": 40030,
+            "created": "2026-11-05T18:00:00.000Z",
+            "modified": "2026-11-05T18:00:00.000Z",
+            "headers": [
+                {
+                    "name": "Authorization",
+                    "value": "Bearer {{tokenVendedor}}"
+                }
+            ],
+            "params": [],
+            "body": {
+                "type": "json",
+                "raw": "",
+                "form": []
+            },
+            "tests": []
+        },
+        {
+            "_id": "req-prop-04",
+            "colId": "col-autoprime",
+            "containerId": "fld-propostas",
+            "name": "[PATCH] 4. Atualizar Status da Proposta",
+            "url": "{{baseUrl}}/propostas/1/status",
+            "method": "PATCH",
+            "sortNum": 40040,
+            "created": "2026-11-05T18:00:00.000Z",
+            "modified": "2026-11-05T18:00:00.000Z",
+            "headers": [
+                {
+                    "name": "Authorization",
+                    "value": "Bearer {{tokenVendedor}}"
+                }
+            ],
+            "params": [],
+            "body": {
+                "type": "json",
+                "raw": "{\n  \"status\": \"aprovada\"\n}",
                 "form": []
             },
             "tests": []

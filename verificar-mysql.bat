@@ -5,9 +5,9 @@ echo =============================================================
 echo 🔍 AutoPrime - Teste de Conexão com o MySQL Workbench
 echo =============================================================
 echo.
-
+cd /d "%~dp0backend"
 node -e "
-import('./backend/database/conexao.js').then(async m => {
+import('./database/conexao.js').then(async m => {
     try {
         const res = await m.testarConexao();
         if (res.modo === 'mysql') {
@@ -22,7 +22,7 @@ import('./backend/database/conexao.js').then(async m => {
             console.log('⚠️  AVISO: MySQL não foi detectado.');
             console.log('   O backend vai rodar em Modo Local Resiliente (JSON).');
             console.log('\n💡 Para conectar ao MySQL Workbench:');
-            console.log('   1. Abra o MySQL Workbench ou XAMPP e inicie o MySQL.');
+            console.log('   1. Abra o MySQL Workbench ou inicie o serviço MySQL.');
             console.log('   2. Verifique se a senha no arquivo backend/.env está correta.');
             console.log('   3. Execute este teste novamente.\n');
         }
@@ -35,6 +35,5 @@ import('./backend/database/conexao.js').then(async m => {
     process.exit(1);
 });
 "
-
 echo =============================================================
 pause

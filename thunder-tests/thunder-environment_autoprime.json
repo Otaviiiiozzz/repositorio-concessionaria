@@ -1,12 +1,24 @@
 {
     "client": "Thunder Client",
     "environmentName": "AutoPrime Local",
-    "dateExported": "2026-10-16T18:00:00.000Z",
+    "dateExported": "2026-11-05T18:00:00.000Z",
     "version": "1.1",
     "variables": [
         {
             "name": "baseUrl",
             "value": "http://localhost:3000"
+        },
+        {
+            "name": "tokenAdmin",
+            "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwibm9tZSI6IkFkbWluaXN0cmFkb3IgQXV0b1ByaW1lIiwiZW1haWwiOiJhZG1pbkBhdXRvcHJpbWUuY29tIiwicGVyZmlsIjoiYWRtaW4iLCJpYXQiOjE3OTM4OTk2NjcsImV4cCI6MTc5NjQ5MTY2N30.0qRV1rzGep2uYWnaY12ahMkIquJCilvUSpvaNAVFNGs"
+        },
+        {
+            "name": "tokenVendedor",
+            "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Miwibm9tZSI6IkNhcmxvcyBWZW5kYXMiLCJlbWFpbCI6InZlbmRlZG9yQGF1dG9wcmltZS5jb20iLCJwZXJmaWwiOiJ2ZW5kZWRvciIsImlhdCI6MTc5Mzg5OTY2NywiZXhwIjoxNzk2NDkxNjY3fQ.CffV3JPGs5dZJDlxRFE58fYZILKTYXV-83a0DGt2YsI"
+        },
+        {
+            "name": "tokenCliente",
+            "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Mywibm9tZSI6Ik1hcmlhbmEgQ2xpZW50ZSIsImVtYWlsIjoiY2xpZW50ZUBhdXRvcHJpbWUuY29tIiwicGVyZmlsIjoiY2xpZW50ZSIsImlhdCI6MTc5Mzg5OTY2NywiZXhwIjoxNzk2NDkxNjY3fQ.wHsnGH2wYjmXAOu3GafRl6YCidFCqXVngc5X8VFOywk"
         }
     ]
 }

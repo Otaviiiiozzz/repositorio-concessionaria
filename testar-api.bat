@@ -1,8 +1,8 @@
 @echo off
 chcp 65001 > nul
-title AutoPrime - Testes Automatizados da API
+title AutoPrime - Testes Automatizados E2E
 echo =======================================================
-echo 🧪 AutoPrime Concessionária - Executando Testes...
+echo 🚗 AutoPrime - Executando Suíte de Testes Automatizados...
 echo =======================================================
 set "PATH=C:\Program Files\nodejs;%PATH%"
 cd /d "%~dp0"

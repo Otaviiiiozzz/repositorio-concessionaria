@@ -1,247 +1,291 @@
 # 🚗 AutoPrime Motors - Sistema de Gestão de Concessionária
 
-Sistema completo e profissional para gerenciamento de estoque de uma concessionária de veículos, composto por:
-- **API RESTful** construída em **Node.js + Express**
-- **Banco de Dados Híbrido/Resiliente**: Suporta **MySQL** nativo e possui **Fallback Local Automático (JSON)** para funcionar imediatamente no VSCode mesmo sem MySQL ativo.
-- **Frontend Moderno**: Interface responsiva e elegante em tema dark automotivo, com busca em tempo real, filtros por marca, ordenação e cálculo automático de métricas do estoque.
-- **Integração Total com VSCode**: Depuração nativa com tecla `F5`, tarefas pré-configuradas e recomendações de extensões.
-- **Suíte Pronta para o Thunder Client**: Coleção completa com requisições para `GET`, `GET por ID`, `POST`, `PUT`, `DELETE`, filtros e testes de erro.
+> **Projeto Integrador de Desenvolvimento Web & Banco de Dados**  
+> **Entrega Atual:** Banco de Dados Relacional & Autenticação (JWT e RBAC)  
+> **Repositório Oficial:** [github.com/Otaviiiiozzz/repositorio-concessionaria](https://github.com/Otaviiiiozzz/repositorio-concessionaria)
 
 ---
 
-## 📁 Estrutura do Projeto
+## 📌 1. Apresentação do Problema & Proposta de Solução
+
+O **AutoPrime Motors** é um sistema completo desenvolvido para solucionar os desafios reais da gestão de uma concessionária de automóveis:
+- **Centralização de Estoque:** Cadastro, atualização e catálogo dinâmico de veículos por categoria, fabricante, quilometragem e valor de venda.
+- **Relacionamento Comercial:** Gestão de propostas de compra enviadas por clientes e analisadas pela equipe de vendas.
+- **Segurança da Informação:** Controle estrito de acessos com autenticação via **JSON Web Token (JWT)**, criptografia irreversível de senhas com **bcrypt** e segregação de permissões por perfil (**RBAC**).
+- **Persistência Relacional:** Modelagem de dados com múltiplas tabelas normalizadas no **MySQL**, com chaves primárias, estrangeiras e integridade referencial.
+- **Alta Resiliência:** Suporte nativo ao **MySQL Workbench** com sistema de **fallback automático local (JSON)** que permite a execução imediata em qualquer ambiente de apresentação no VSCode.
+
+---
+
+## 🗄️ 2. Modelagem do Banco de Dados Relacional (MySQL)
+
+O sistema implementa **5 tabelas relacionadas** com chaves primárias (`PRIMARY KEY`), chaves estrangeiras (`FOREIGN KEY`), índices e integridade referencial com ações `ON DELETE RESTRICT`, `CASCADE` e `SET NULL`.
+
+### Diagrama Entidade-Relacionamento (DER)
+
+```mermaid
+erDiagram
+    PERFIS ||--o{ USUARIOS : "1 perfil possui N usuarios"
+    CATEGORIAS ||--o{ VEICULOS : "1 categoria classifica N veiculos"
+    USUARIOS ||--o{ VEICULOS : "cadastrado_por"
+    VEICULOS ||--o{ PROPOSTAS : "1 veiculo recebe N propostas"
+    USUARIOS ||--o{ PROPOSTAS : "cliente_id (autor da proposta)"
+    USUARIOS ||--o{ PROPOSTAS : "vendedor_id (vendedor responsavel)"
+
+    PERFIS {
+        int id PK
+        varchar nome UK
+        varchar descricao
+        timestamp criado_em
+    }
+
+    USUARIOS {
+        int id PK
+        varchar nome
+        varchar email UK
+        varchar senha
+        int perfil_id FK
+        varchar telefone
+        tinyint ativo
+        timestamp criado_em
+        timestamp atualizado_em
+    }
+
+    CATEGORIAS {
+        int id PK
+        varchar nome UK
+        varchar descricao
+        timestamp criado_em
+    }
+
+    VEICULOS {
+        int id PK
+        varchar modelo
+        varchar fabricante
+        int ano
+        decimal quilometragem
+        decimal preco
+        enum status
+        int categoria_id FK
+        int cadastrado_por FK
+        timestamp criado_em
+        timestamp atualizado_em
+    }
+
+    PROPOSTAS {
+        int id PK
+        int veiculo_id FK
+        int cliente_id FK
+        int vendedor_id FK
+        decimal valor_proposta
+        enum status
+        enum forma_pagamento
+        text observacoes
+        timestamp criado_em
+        timestamp atualizado_em
+    }
+```
+
+### Script SQL Disponível no Repositório
+O script DDL e DML completo com a criação de tabelas, chaves e dados padrão (seed) está localizado em:
+👉 **[`sql/concessionaria.sql`](file:///sql/concessionaria.sql)**
+
+---
+
+## 🔐 3. Cadastro, Autenticação e Segurança de Senhas
+
+### Proteção de Senhas com Bcrypt
+- Nenhuma senha é armazenada em texto puro.
+- O cadastro e alteração de senhas utilizam **`bcryptjs`** com fator de custo (**salt rounds = 10**), gerando hashes criptográficos unidirecionais.
+- Na autenticação (`POST /auth/login`), a validação é feita via comparação segura (`bcrypt.compare`), prevenindo ataques de timing e garantindo a privacidade das credenciais.
+
+### Autenticação Stateless com JWT
+- O login gera um **JSON Web Token (JWT)** assinado com algoritmo HMAC SHA-256 e chave secreta (`JWT_SECRET`).
+- O payload do token carrega a identidade e a função do usuário (`id`, `nome`, `email`, `perfil`), com prazo de expiração configurável (`JWT_EXPIRES_IN=8h`).
+- O middleware de autenticação intercepta requisições protegidas via cabeçalho HTTP:
+  ```http
+  Authorization: Bearer <TOKEN_JWT>
+  ```
+- Retorna **`401 Unauthorized`** quando o token não é fornecido e **`403 Forbidden`** quando o token é inválido ou expirado.
+
+---
+
+## 👥 4. Perfis de Usuário & Controle de Acesso (RBAC)
+
+O sistema define 3 níveis de acesso diferenciados:
+
+| Perfil | Nome no Sistema | Permissões & Regras de Negócio |
+| :--- | :--- | :--- |
+| **Administrador** | `admin` | Acesso total irrestrito: gerencia usuários, ativa/desativa contas, visualiza propostas, cadastra e **exclui veículos** do estoque. |
+| **Vendedor** | `vendedor` | Gestão comercial: cadastra e atualiza veículos no estoque, consulta e aprova/recusa propostas de compra. |
+| **Cliente** | `cliente` | Consulta o catálogo público, visualiza detalhes e envia **propostas de negociação** para veículos. |
+
+### Contas de Demonstração Pré-Configuradas
+
+| Perfil | E-mail de Login | Senha Padrão |
+| :--- | :--- | :--- |
+| 🔴 **Administrador** | `admin@autoprime.com` | `admin123` |
+| 🟡 **Vendedor** | `vendedor@autoprime.com` | `vendedor123` |
+| 🔵 **Cliente** | `cliente@autoprime.com` | `cliente123` |
+
+---
+
+## 🛣️ 5. Matriz de Rotas da API
+
+### Módulo: Autenticação (`/auth`)
+- `POST /auth/registrar` — Cadastro de usuário (**Público**)
+- `POST /auth/login` — Autenticação com validação de hash e geração de JWT (**Público**)
+- `GET  /auth/me` — Perfil do usuário autenticado (**Requer JWT**)
+- `GET  /auth/perfis` — Lista perfis do sistema (**Público**)
+
+### Módulo: Gestão de Usuários (`/usuarios`)
+- `GET   /usuarios` — Lista usuários (**Requer Admin**)
+- `POST  /usuarios` — Cria usuário com perfil específico (**Requer Admin**)
+- `GET   /usuarios/:id` — Dados de um usuário (**Admin ou Próprio Usuário**)
+- `PATCH /usuarios/:id/status` — Ativa ou inativa conta (**Requer Admin**)
+
+### Módulo: Veículos (`/veiculos`)
+- `GET    /veiculos` — Listagem do catálogo com filtros (**Público**)
+- `GET    /veiculos/resumo` — Resumo estatístico do estoque (**Público**)
+- `GET    /veiculos/:id` — Detalhes de um veículo específico (**Público**)
+- `POST   /veiculos` — Cadastra veículo no estoque (**Requer Vendedor ou Admin**)
+- `PUT    /veiculos/:id` — Atualiza dados cadastrais (**Requer Vendedor ou Admin**)
+- `DELETE /veiculos/:id` — Remove veículo do catálogo (**Requer Admin**)
+
+### Módulo: Propostas de Compra (`/propostas`)
+- `POST  /propostas` — Envia proposta de compra para veículo (**Requer Cliente/Autenticado**)
+- `GET   /propostas/minhas` — Lista propostas do próprio cliente (**Requer Cliente**)
+- `GET   /propostas` — Lista todas as propostas da loja (**Requer Vendedor ou Admin**)
+- `PATCH /propostas/:id/status` — Aprova/recusa proposta (**Requer Vendedor ou Admin**)
+
+---
+
+## 📁 6. Estrutura e Organização da Arquitetura
+
+O projeto adota uma arquitetura limpa em camadas (MVC), garantindo estrita separação de responsabilidades:
 
 ```
 concessionaria/
-├── .vscode/                                # Configurações para VSCode
-│   ├── launch.json                         # Execução e Debug com F5
-│   ├── tasks.json                          # Tarefas rápidas (start, test)
-│   ├── extensions.json                     # Extensões recomendadas (Thunder Client, Live Server)
-│   └── settings.json                       # Configurações do editor
-├── backend/                                # API RESTful
-│   ├── controllers/
-│   │   └── veiculosController.js           # Lógica das regras de negócio e validações
+├── .vscode/                                # Configurações de depuração e tarefas do VSCode
+│   ├── launch.json                         # Execução com tecla F5
+│   ├── tasks.json                          # Tarefas automáticas (npm start, npm test)
+│   └── settings.json
+├── backend/                                # Camada Back-end (Node.js + Express)
+│   ├── controllers/                        # Regras de negócio e validações
+│   │   ├── authController.js               # Cadastro, login e geração de tokens
+│   │   ├── usuariosController.js           # Gerenciamento de usuários e status
+│   │   ├── veiculosController.js           # Operações do estoque de automóveis
+│   │   └── propostasController.js          # Fluxo de negociações entre cliente e loja
 │   ├── database/
-│   │   ├── conexao.js                      # Conexão resiliente (MySQL + Local Fallback)
-│   │   └── dados_locais.json               # Persistência em modo local
-│   ├── middlewares/
-│   │   └── corsMiddleware.js               # Configuração de CORS e headers permitidos
-│   ├── routes/
-│   │   └── veiculosRoutes.js               # Mapeamento de rotas (/veiculos)
-│   ├── .env                                # Configurações de ambiente
-│   ├── .env.example                        # Modelo de variáveis
-│   ├── package.json                        # Scripts e dependências
-│   └── server.js                           # Ponto de entrada do servidor
-├── frontend/                               # Interface do Usuário
-│   ├── index.html                          # Estrutura do painel de controle
-│   ├── script.js                           # Consumo da API, filtros e DOM
-│   └── style.css                           # Design System Dark Premium
+│   │   ├── conexao.js                      # Conexão MySQL Pool + Fallback Resiliente
+│   │   └── dados_locais.json               # Persistência local em modo de demonstração
+│   ├── middlewares/                        # Interceptadores de requisições
+│   │   ├── authMiddleware.js               # Validação de JWT e autorização por perfil (RBAC)
+│   │   └── corsMiddleware.js               # Políticas de CORS e cabeçalhos permitidos
+│   ├── routes/                             # Mapeamento e proteção de rotas
+│   │   ├── authRoutes.js
+│   │   ├── usuariosRoutes.js
+│   │   ├── veiculosRoutes.js
+│   │   └── propostasRoutes.js
+│   ├── .env.example                        # Modelo de variáveis de ambiente
+│   ├── package.json                        # Dependências (express, mysql2, bcryptjs, jsonwebtoken)
+│   └── server.js                           # Ponto de entrada da aplicação
+├── frontend/                               # Interface do Usuário (HTML5, CSS3, JavaScript)
+│   ├── index.html                          # Painel responsivo, catálogo e modais de login/propostas
+│   ├── script.js                           # Manipulação do DOM, consumo via Fetch e gestão de JWT
+│   └── style.css                           # Design System Dark Premium automotivo
 ├── sql/
-│   └── concessionaria.sql                  # Script DDL e DML para MySQL
+│   └── concessionaria.sql                  # Script DDL/DML relacional completo para MySQL
 ├── tests/
-│   └── test-api.js                         # Suíte de 15 testes automatizados E2E
-├── thunder-client/                         # Coleção e ambiente para importação
+│   └── test-api.js                         # Suíte com 29 testes automatizados E2E
+├── thunder-client/                         # Coleção e ambiente prontos para importação
 │   ├── thunder-collection_autoprime.json
 │   └── thunder-environment_autoprime.json
-├── thunder-tests/                          # Pasta nativa para sincronização no VSCode
-│   ├── thunder-collection_autoprime.json
-│   └── thunder-environment_autoprime.json
-├── GUIA_APRESENTACAO_ESCOLA.md             # 🎓 ROTEIRO COMPLETO PARA APRESENTAR NA ESCOLA
-├── verificar-mysql.bat                     # Teste rápido de conexão com o MySQL Workbench
-├── iniciar-servidor.bat                    # Inicializador em 1 clique
-├── resetar-dados.bat                       # Restaura os 8 veículos originais
-├── testar-api.bat                          # Executa os 15 testes automatizados
+├── thunder-tests/                          # Pasta nativa para auto-carregamento no VSCode
+├── thunder_client_codigos/
+│   └── rotas_thunder_client.md             # Guia prático com payloads e comandos cURL
+├── GUIA_APRESENTACAO_ESCOLA.md             # Roteiro passo a passo para apresentar na escola
+├── iniciar-servidor.bat                    # Inicializador do backend em 1 clique
+├── iniciar-mysql.bat                       # Inicializador do motor MySQL
+├── verificar-mysql.bat                     # Teste de diagnóstico da conexão MySQL
+├── resetar-dados.bat                       # Restaura o banco de dados para o estado inicial
+├── testar-api.bat                          # Executa a suíte de 29 testes automatizados
 ├── subir-github.bat                        # Envia alterações para o GitHub
-└── README.md                               # Documentação completa
+└── README.md                               # Documentação oficial da entrega
 ```
 
 ---
 
-## 🚀 Como Abrir e Rodar no VSCode
+## 🚀 7. Como Rodar no VSCode
 
-### 1. Abrir no VSCode
-Abra o VSCode e abra a pasta:
+### 1. Clonar ou Abrir a Pasta no VSCode
+Abra a pasta `concessionaria` no seu Visual Studio Code.
+
+### 2. Instalar as Dependências (apenas na 1ª vez)
+No terminal integrado do VSCode:
+```bash
+cd backend
+npm install
 ```
-C:\Users\otavi\.gemini\antigravity\scratch\concessionaria
-```
 
-### 2. Iniciar o Backend
-Você tem **3 formas simples** de iniciar o servidor:
-
-* **Opção A (Mais fácil - Tecla F5):**
-  Pressione a tecla `F5` no teclado ou vá no menu lateral **Executar e Depurar (Run & Debug)** e selecione `🚗 Iniciar Backend (AutoPrime API)`. O servidor iniciará com recarregamento automático (`--watch`).
-
-* **Opção B (Pelo Terminal Integrado do VSCode):**
-  Abra um terminal (`Ctrl + '`) e execute:
+### 3. Iniciar o Servidor
+Você pode iniciar de 3 formas:
+- **Opção A (Mais fácil):** Pressione `F5` no teclado (utiliza a configuração de depuração nativa do VSCode).
+- **Opção B (Dois cliques):** Dê um duplo-clique no arquivo `iniciar-servidor.bat`.
+- **Opção C (Terminal):**
   ```bash
   cd backend
   npm start
-  # ou para modo de desenvolvimento com auto-reload:
-  npm run dev
   ```
 
-* **Opção C (Pelo menu de Tarefas do VSCode):**
-  Pressione `Ctrl + Shift + P` -> `Tasks: Run Task` -> Escolha `🚗 Iniciar Backend (npm start)`.
+### 4. Abrir o Frontend
+Basta abrir o arquivo `frontend/index.html` em qualquer navegador (ou utilizar a extensão *Live Server* do VSCode).
 
-> 💡 **Nota sobre o Banco de Dados:**
-> Se o seu MySQL estiver rodando com o script `sql/concessionaria.sql` importado, a API se conectará automaticamente a ele.
-> Caso você **não tenha o MySQL instalado ou ativo no momento**, a API entra automaticamente em **Modo Local Resiliente**, permitindo que você teste **100% de todas as funcionalidades e o Thunder Client** imediatamente sem nenhum erro de conexão!
+> 💡 **Nota sobre o Banco de Dados:**  
+> Se o MySQL Workbench estiver em execução com o script `sql/concessionaria.sql` importado, a API gravará tudo diretamente nele.  
+> Caso o MySQL não esteja iniciado, o sistema ativa automaticamente o **Modo Local Resiliente**, garantindo funcionamento integral de todas as rotas, cadastro, login e testes sem falhas!
 
 ---
 
-## ⚡ Como Usar com o Thunder Client no VSCode
+## 🧪 8. Testes Automatizados E2E (29 Casos de Teste)
 
-A extensão **Thunder Client** permite testar e manipular todas as rotas da API diretamente dentro do VSCode.
+O projeto conta com uma suíte abrangente de testes automatizados que verifica integridade, segurança e controle de permissões.
 
-### Passo 1: Instalar a Extensão
-Se ainda não a tiver, instale a extensão `Thunder Client` da loja do VSCode (ou aceite a recomendação exibida ao abrir a pasta).
-
-### Passo 2: Importar a Coleção
-1. Clique no ícone do **Thunder Client** (o raio ⚡ no menu lateral esquerdo do VSCode).
-2. Vá na aba **Collections** (Coleções).
-3. Clique no botão de menu (três pontos `...` ou ícone de hambúrguer) e selecione **Import**.
-4. Selecione o arquivo:
-   ```
-   thunder-client/thunder-collection_autoprime.json
-   ```
-5. *(Opcional)* Na aba **Env**, você também pode importar o ambiente:
-   ```
-   thunder-client/thunder-environment_autoprime.json
-   ```
-
----
-
-## 📋 Endpoints Disponíveis no Thunder Client
-
-A coleção já vem pronta com 9 requisições organizadas e com os corpos (JSON) pré-preenchidos:
-
-### 1. `GET /veiculos` — Listar todos os veículos
-- **Método:** `GET`
-- **URL:** `http://localhost:3000/veiculos`
-- **Descrição:** Retorna todo o estoque cadastrado em ordem decrescente de ID.
-
-### 2. `GET /veiculos/:id` — Buscar veículo por ID
-- **Método:** `GET`
-- **URL:** `http://localhost:3000/veiculos/1`
-- **Descrição:** Retorna os detalhes do veículo especificado. Caso não exista, retorna status `404`.
-
-### 3. `GET /veiculos` (Filtros por Query Params)
-- **Método:** `GET`
-- **URL:** `http://localhost:3000/veiculos?fabricante=Toyota&busca=Corolla`
-- **Parâmetros suportados:**
-  - `busca`: Busca textual por modelo ou fabricante
-  - `fabricante`: Filtra por marca exata (ex: `Toyota`, `Honda`)
-  - `preco_max`: Filtra veículos até o valor informado
-  - `ordenar`: Opções: `preco_asc`, `preco_desc`, `ano_desc`, `km_asc`
-
-### 4. `GET /veiculos/resumo` — Dashboard e Estatísticas
-- **Método:** `GET`
-- **URL:** `http://localhost:3000/veiculos/resumo`
-- **Descrição:** Retorna métricas consolidadas: quantidade de veículos, valor total do estoque, média de quilometragem e contagem por fabricante.
-
-### 5. `POST /veiculos` — Cadastrar novo veículo
-- **Método:** `POST`
-- **URL:** `http://localhost:3000/veiculos`
-- **Headers:** `Content-Type: application/json`
-- **Body (JSON):**
-  ```json
-  {
-      "modelo": "Hilux SRX Plus 4x4",
-      "fabricante": "Toyota",
-      "ano": 2024,
-      "quilometragem": 15000,
-      "preco": 334900.00
-  }
-  ```
-- **Resposta esperada:** Status `201 Created` com o ID gerado e os dados do veículo.
-
-### 6. `PUT /veiculos/:id` — Atualizar veículo existente
-- **Método:** `PUT`
-- **URL:** `http://localhost:3000/veiculos/1`
-- **Headers:** `Content-Type: application/json`
-- **Body (JSON):**
-  ```json
-  {
-      "modelo": "Corolla Altis Premium Híbrido",
-      "fabricante": "Toyota",
-      "ano": 2024,
-      "quilometragem": 8500,
-      "preco": 182900.00
-  }
-  ```
-- **Resposta esperada:** Status `200 OK` com a confirmação e o objeto atualizado.
-
-### 7. `DELETE /veiculos/:id` — Excluir veículo por ID
-- **Método:** `DELETE`
-- **URL:** `http://localhost:3000/veiculos/8`
-- **Descrição:** Remove o veículo informado do estoque.
-- **Resposta esperada:** Status `200 OK` com a mensagem de sucesso.
-
-### 8. `GET /veiculos/9999` — Teste de 404 (Não Encontrado)
-- **Método:** `GET`
-- **URL:** `http://localhost:3000/veiculos/9999`
-- **Resposta esperada:** Status `404 Not Found`.
-
-### 9. `POST /veiculos` — Teste de 400 (Validação de Dados)
-- **Método:** `POST`
-- **Body inválido (campos vazios ou valores negativos):**
-  ```json
-  {
-      "modelo": "",
-      "fabricante": "",
-      "ano": 1800,
-      "quilometragem": -50,
-      "preco": 0
-  }
-  ```
-- **Resposta esperada:** Status `400 Bad Request` com a mensagem explicativa do erro.
-
----
-
-## 🌐 Como Usar o Frontend
-
-1. No VSCode, clique com o botão direito no arquivo [`frontend/index.html`](file:///C:/Users/otavi/.gemini/antigravity/scratch/concessionaria/frontend/index.html).
-2. Selecione **Open with Live Server** (ou abra o arquivo diretamente no seu navegador de preferência, como Chrome ou Edge).
-3. A interface carregará os veículos da API, exibindo:
-   - Indicador de status da conexão no topo (MySQL ou Modo Local)
-   - Contadores em tempo real (Total de Veículos, Km Médio, Valor Total)
-   - Barra de busca instantânea e filtros por marca e ordenação
-   - Botões de **Editar** (preenche o formulário para alteração via PUT) e **Excluir** (confirmação e remoção via DELETE).
-
----
-
-## 🧪 Suíte de Testes Automatizados
-
-O projeto inclui um script que testa todas as 15 regras de negócio e rotas da API:
-
+Para executar os testes:
+- Dê dois cliques em **`testar-api.bat`** (com o servidor ligado), ou:
 ```bash
-cd backend
-npm test
-# ou a partir da raiz:
 node tests/test-api.js
 ```
 
-Resultado:
-```
-=======================================================
-🚗 Iniciando Suíte de Testes da API AutoPrime
-🎯 Alvo: http://localhost:3000
-=======================================================
-  ✔ [PASSOU] GET / responde com status 200
-  ✔ [PASSOU] GET / retorna objeto com rotas
-  ✔ [PASSOU] GET /veiculos responde com status 200
-  ✔ [PASSOU] GET /veiculos retorna array de veículos
-  ✔ [PASSOU] GET /veiculos/resumo responde com 200
-  ✔ [PASSOU] GET /veiculos/resumo contém totalVeiculos e valorTotalEstoque
-  ✔ [PASSOU] GET /veiculos/:id responde com status 200
-  ✔ [PASSOU] Veículo retornado possui modelo e fabricante
-  ✔ [PASSOU] POST /veiculos responde com status 201 (Created)
-  ✔ [PASSOU] POST /veiculos retorna ID do novo registro
-  ✔ [PASSOU] PUT /veiculos/:id responde com status 200
-  ✔ [PASSOU] PUT atualizou o modelo com sucesso
-  ✔ [PASSOU] DELETE /veiculos/:id responde com status 200
-  ✔ [PASSOU] GET /veiculos/:id após DELETE responde com 404 (Not Found)
-  ✔ [PASSOU] POST /veiculos com dados inválidos responde com 400 (Bad Request)
-=======================================================
-🎉 TODOS OS TESTES PASSARAM COM SUCESSO!
-```
+### Cobertura dos Testes:
+1. Documentação & Healthcheck da rota raiz (`200 OK`)
+2. Catálogo público e resumo estatístico de estoque
+3. Cadastro de usuário com criptografia de senha (`201 Created`)
+4. Rejeição de e-mail duplicado (`409 Conflict`)
+5. Rejeição de senhas curtas (`400 Bad Request`)
+6. Login com verificação de hash bcrypt para Admin, Vendedor e Cliente (`200 OK`)
+7. Rejeição de credenciais inválidas (`401 Unauthorized`)
+8. Middleware de autenticação JWT (`401` ausente, `403` adulterado, `200` autenticado)
+9. Controle de perfil: Cliente bloqueado de cadastrar veículos (`403 Forbidden`)
+10. Controle de perfil: Vendedor autorizado a cadastrar e editar veículos (`201/200`)
+11. Controle de perfil: Vendedor bloqueado de excluir veículos (`403 Forbidden`)
+12. Controle de perfil: Administrador autorizado a excluir veículos (`200 OK`)
+13. Confirmação de exclusão no estoque (`404 Not Found`)
+14. Módulo de usuários restrito ao Administrador (`403` para cliente, `200` para admin)
+15. Fluxo relacional de envio, consulta e aprovação de propostas de compra comerciais
+
+---
+
+## ⚡ 9. Testando no Thunder Client (VSCode)
+
+1. Instale a extensão **Thunder Client** no VSCode.
+2. O ambiente e a coleção já estão sincronizados automaticamente na pasta `thunder-tests/`.
+3. Para importar manualmente, clique em **Collections > ... > Import** e selecione `thunder-client/thunder-collection_autoprime.json`.
+4. As variáveis de ambiente `{{tokenAdmin}}`, `{{tokenVendedor}}` e `{{tokenCliente}}` já estão pré-configuradas para testar qualquer requisição imediatamente.
+
+---
+
+## 👥 Equipe & Autor
+- **Estudante:** Otávio Martins
+- **Instituição:** Senac RS
+- **Licença:** MIT
