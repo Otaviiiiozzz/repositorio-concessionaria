@@ -572,6 +572,18 @@ tbody tr:hover {
     border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
+.etiqueta-cat {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 4px;
+    background: rgba(59, 130, 246, 0.15);
+    color: #93c5fd;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    margin-left: 6px;
+    display: inline-block;
+}
+
 .acoes-tabela {
     display: flex;
     gap: 6px;

@@ -5,6 +5,7 @@ import authRoutes from "./routes/authRoutes.js";
 import usuariosRoutes from "./routes/usuariosRoutes.js";
 import veiculosRoutes from "./routes/veiculosRoutes.js";
 import propostasRoutes from "./routes/propostasRoutes.js";
+import { listarCategorias } from "./controllers/veiculosController.js";
 import { testarConexao, obterModoAtivo, obterConfigConectada } from "./database/conexao.js";
 
 const app = express();
@@ -73,6 +74,7 @@ app.get("/", (req, res) => {
 });
 
 // Rotas dos módulos
+app.get("/categorias", listarCategorias);
 app.use("/auth", authRoutes);
 app.use("/usuarios", usuariosRoutes);
 app.use("/veiculos", veiculosRoutes);

@@ -1,6 +1,8 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import mysql from "mysql2/promise";
+import "dotenv/config";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -40,6 +42,49 @@ const estado = {
     ]
 };
 
-fs.writeFileSync(arquivo, JSON.stringify(estado, null, 2), "utf-8");
-console.log("✅ Banco de dados local restaurado com sucesso!");
-console.log("📋 8 Veículos, 3 Usuários (Admin, Vendedor, Cliente), 3 Perfis, 5 Categorias e 2 Propostas restaurados.");
+async function resetar() {
+    // 1. Tenta resetar no MySQL Workbench
+    try {
+        const c = await mysql.createConnection({
+            host: process.env.DB_HOST || "127.0.0.1",
+            user: process.env.DB_USER || "root",
+            password: process.env.DB_PASSWORD || "admin",
+            database: process.env.DB_NAME || "concessionaria"
+        });
+
+        await c.query("SET FOREIGN_KEY_CHECKS = 0;");
+        await c.query("TRUNCATE TABLE propostas;");
+        await c.query("TRUNCATE TABLE veiculos;");
+        await c.query("TRUNCATE TABLE usuarios;");
+        await c.query("TRUNCATE TABLE categorias;");
+        await c.query("TRUNCATE TABLE perfis;");
+        await c.query("SET FOREIGN_KEY_CHECKS = 1;");
+
+        for (const p of estado.perfis) {
+            await c.query("INSERT INTO perfis (id, nome, descricao) VALUES (?, ?, ?)", [p.id, p.nome, p.descricao]);
+        }
+        for (const cat of estado.categorias) {
+            await c.query("INSERT INTO categorias (id, nome, descricao) VALUES (?, ?, ?)", [cat.id, cat.nome, cat.descricao]);
+        }
+        for (const u of estado.usuarios) {
+            await c.query("INSERT INTO usuarios (id, nome, email, senha, perfil_id, telefone, ativo) VALUES (?, ?, ?, ?, ?, ?, ?)", [u.id, u.nome, u.email, u.senha, u.perfil_id, u.telefone, u.ativo]);
+        }
+        for (const v of estado.veiculos) {
+            await c.query("INSERT INTO veiculos (id, modelo, fabricante, ano, quilometragem, preco, status, categoria_id, cadastrado_por) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", [v.id, v.modelo, v.fabricante, v.ano, v.quilometragem, v.preco, v.status, v.categoria_id, v.cadastrado_por]);
+        }
+        for (const prop of estado.propostas) {
+            await c.query("INSERT INTO propostas (id, veiculo_id, cliente_id, vendedor_id, valor_proposta, status, forma_pagamento, observacoes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", [prop.id, prop.veiculo_id, prop.cliente_id, prop.vendedor_id, prop.valor_proposta, prop.status, prop.forma_pagamento, prop.observacoes]);
+        }
+
+        await c.end();
+        console.log("✅ BANCO DE DADOS MYSQL WORKBENCH RESTAURADO COM SUCESSO!");
+    } catch (e) {
+        console.warn("⚠️ MySQL não conectado durante reset:", e.message);
+    }
+
+    // 2. Salva também no arquivo local
+    fs.writeFileSync(arquivo, JSON.stringify(estado, null, 2), "utf-8");
+    console.log("📋 8 Veículos, 3 Usuários, 3 Perfis, 5 Categorias e 2 Propostas restaurados.");
+}
+
+resetar();

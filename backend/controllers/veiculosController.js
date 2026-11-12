@@ -39,14 +39,20 @@ function validarVeiculo(dados) {
 
 /**
  * GET /veiculos
- * Suporta filtros via query string: ?busca=corolla&fabricante=Toyota&preco_max=160000&ordenar=preco_asc
+ * Suporta filtros via query string: ?busca=corolla&fabricante=Toyota&preco_max=160000&ordenar=preco_asc&categoria_id=1
  */
 async function listarVeiculos(req, res) {
     try {
-        const { busca, fabricante, preco_max, ordenar } = req.query;
+        const { busca, fabricante, preco_max, ordenar, categoria_id } = req.query;
 
-        // Se houver filtros, aplicamos de forma uniforme
-        const [todosVeiculos] = await pool.query("SELECT * FROM veiculos ORDER BY id DESC");
+        // Consulta veículos no MySQL com JOIN na tabela categorias
+        const [todosVeiculos] = await pool.query(`
+            SELECT v.*, c.nome AS categoria_nome
+            FROM veiculos v
+            LEFT JOIN categorias c ON v.categoria_id = c.id
+            ORDER BY v.id DESC
+        `);
+
         let resultado = [...todosVeiculos];
 
         if (busca && busca.trim()) {
@@ -62,6 +68,11 @@ async function listarVeiculos(req, res) {
             resultado = resultado.filter(v =>
                 v.fabricante && v.fabricante.toLowerCase() === fab
             );
+        }
+
+        if (categoria_id && !isNaN(Number(categoria_id))) {
+            const catId = Number(categoria_id);
+            resultado = resultado.filter(v => Number(v.categoria_id) === catId);
         }
 
         if (preco_max && !isNaN(Number(preco_max))) {
@@ -89,7 +100,7 @@ async function listarVeiculos(req, res) {
 
 /**
  * GET /veiculos/:id
- * Busca um veículo específico pelo seu identificador único
+ * Busca um veículo específico pelo seu identificador único no MySQL
  */
 async function buscarVeiculoPorId(req, res) {
     const id = Number(req.params.id);
@@ -98,7 +109,14 @@ async function buscarVeiculoPorId(req, res) {
     }
 
     try {
-        const [veiculos] = await pool.query("SELECT * FROM veiculos WHERE id = ?", [id]);
+        const [veiculos] = await pool.query(`
+            SELECT v.*, c.nome AS categoria_nome, u.nome AS cadastrado_por_nome
+            FROM veiculos v
+            LEFT JOIN categorias c ON v.categoria_id = c.id
+            LEFT JOIN usuarios u ON v.cadastrado_por = u.id
+            WHERE v.id = ?
+        `, [id]);
+
         if (veiculos.length === 0) {
             return res.status(404).json({ mensagem: `Veículo com ID #${id} não encontrado no estoque.` });
         }
@@ -141,8 +159,22 @@ async function obterResumoEstoque(req, res) {
 }
 
 /**
+ * GET /veiculos/categorias (ou /categorias)
+ * Lista todas as categorias registradas no MySQL
+ */
+async function listarCategorias(req, res) {
+    try {
+        const [categorias] = await pool.query("SELECT id, nome, descricao FROM categorias ORDER BY id ASC");
+        res.status(200).json(categorias);
+    } catch (erro) {
+        console.error("Erro ao listar categorias:", erro);
+        res.status(500).json({ mensagem: "Erro ao listar categorias", erro: erro.message });
+    }
+}
+
+/**
  * POST /veiculos
- * Cadastra um novo veículo no estoque da concessionária
+ * Cadastra um novo veículo no estoque da concessionária diretamente no MySQL
  */
 async function cadastrarVeiculo(req, res) {
     const erroValidacao = validarVeiculo(req.body);
@@ -183,7 +215,7 @@ async function cadastrarVeiculo(req, res) {
 
 /**
  * PUT /veiculos/:id
- * Atualiza todos os dados de um veículo existente
+ * Atualiza todos os dados de um veículo existente diretamente no MySQL
  */
 async function atualizarVeiculo(req, res) {
     const id = Number(req.params.id);
@@ -196,7 +228,7 @@ async function atualizarVeiculo(req, res) {
         return res.status(400).json({ mensagem: erroValidacao });
     }
 
-    const { modelo, fabricante, ano, quilometragem, preco } = req.body;
+    const { modelo, fabricante, ano, quilometragem, preco, categoria_id } = req.body;
     try {
         // Verifica se o veículo existe
         const [existentes] = await pool.query("SELECT id FROM veiculos WHERE id = ?", [id]);
@@ -205,8 +237,8 @@ async function atualizarVeiculo(req, res) {
         }
 
         await pool.query(
-            "UPDATE veiculos SET modelo = ?, fabricante = ?, ano = ?, quilometragem = ?, preco = ? WHERE id = ?",
-            [modelo.trim(), fabricante.trim(), Number(ano), Number(quilometragem), Number(preco), id]
+            "UPDATE veiculos SET modelo = ?, fabricante = ?, ano = ?, quilometragem = ?, preco = ?, categoria_id = COALESCE(?, categoria_id) WHERE id = ?",
+            [modelo.trim(), fabricante.trim(), Number(ano), Number(quilometragem), Number(preco), categoria_id ? Number(categoria_id) : null, id]
         );
 
         const veiculoAtualizado = {
@@ -215,7 +247,8 @@ async function atualizarVeiculo(req, res) {
             fabricante: fabricante.trim(),
             ano: Number(ano),
             quilometragem: Number(quilometragem),
-            preco: Number(preco)
+            preco: Number(preco),
+            categoria_id: categoria_id ? Number(categoria_id) : existentes[0].categoria_id
         };
 
         res.status(200).json({
@@ -230,7 +263,7 @@ async function atualizarVeiculo(req, res) {
 
 /**
  * DELETE /veiculos/:id
- * Remove um veículo do estoque pelo seu ID
+ * Remove um veículo do estoque pelo seu ID diretamente no MySQL
  */
 async function excluirVeiculo(req, res) {
     const id = Number(req.params.id);
@@ -258,6 +291,7 @@ export {
     listarVeiculos,
     buscarVeiculoPorId,
     obterResumoEstoque,
+    listarCategorias,
     cadastrarVeiculo,
     atualizarVeiculo,
     excluirVeiculo

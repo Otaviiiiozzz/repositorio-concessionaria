@@ -485,17 +485,18 @@ function executarQueryMemoria(sql, params = []) {
 
 async function inicializarBancoMySQL() {
     const configEnv = {
-        host: process.env.DB_HOST || "localhost",
+        host: process.env.DB_HOST || "127.0.0.1",
         port: Number(process.env.DB_PORT) || 3306,
         user: process.env.DB_USER || "root",
         password: process.env.DB_PASSWORD !== undefined ? process.env.DB_PASSWORD : "admin",
         database: process.env.DB_NAME || "concessionaria"
     };
 
+    const hostsParaTestar = [configEnv.host, "127.0.0.1", "localhost"];
     const senhasParaTestar = [
         configEnv.password,
-        "",
         "admin",
+        "",
         "root",
         "123456",
         "mysql"
@@ -504,21 +505,24 @@ async function inicializarBancoMySQL() {
     let conexaoSucesso = null;
     let configGanhadora = null;
 
-    for (const senha of senhasParaTestar) {
-        try {
-            const conexaoTeste = await mysql.createConnection({
-                host: configEnv.host,
-                port: configEnv.port,
-                user: configEnv.user,
-                password: senha,
-                connectTimeout: 2000
-            });
-            conexaoSucesso = conexaoTeste;
-            configGanhadora = { ...configEnv, password: senha };
-            break;
-        } catch (e) {
-            // Continua tentando
+    for (const host of [...new Set(hostsParaTestar)]) {
+        for (const senha of senhasParaTestar) {
+            try {
+                const conexaoTeste = await mysql.createConnection({
+                    host,
+                    port: configEnv.port,
+                    user: configEnv.user,
+                    password: senha,
+                    connectTimeout: 2000
+                });
+                conexaoSucesso = conexaoTeste;
+                configGanhadora = { ...configEnv, host, password: senha };
+                break;
+            } catch (e) {
+                // Continua tentando
+            }
         }
+        if (conexaoSucesso) break;
     }
 
     if (!conexaoSucesso) {
@@ -621,6 +625,21 @@ async function inicializarBancoMySQL() {
                 INDEX \`idx_propostas_status\` (\`status\`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
         `);
+
+        // Garante que colunas relacionais status, categoria_id e cadastrado_por existam
+        const [colsVeic] = await conexaoSucesso.query("SHOW COLUMNS FROM `veiculos`;");
+        const nomesVeic = colsVeic.map(col => col.Field);
+        if (!nomesVeic.includes("status")) {
+            await conexaoSucesso.query("ALTER TABLE `veiculos` ADD COLUMN `status` ENUM('disponivel', 'reservado', 'vendido') NOT NULL DEFAULT 'disponivel' AFTER `preco`;");
+        }
+        if (!nomesVeic.includes("categoria_id")) {
+            await conexaoSucesso.query("ALTER TABLE `veiculos` ADD COLUMN `categoria_id` INT NULL AFTER `status`;");
+            await conexaoSucesso.query("ALTER TABLE `veiculos` ADD CONSTRAINT `fk_veiculos_categorias` FOREIGN KEY (`categoria_id`) REFERENCES `categorias`(`id`) ON DELETE SET NULL;");
+        }
+        if (!nomesVeic.includes("cadastrado_por")) {
+            await conexaoSucesso.query("ALTER TABLE `veiculos` ADD COLUMN `cadastrado_por` INT NULL AFTER `categoria_id`;");
+            await conexaoSucesso.query("ALTER TABLE `veiculos` ADD CONSTRAINT `fk_veiculos_usuarios` FOREIGN KEY (`cadastrado_por`) REFERENCES `usuarios`(`id`) ON DELETE SET NULL;");
+        }
 
         // Popular Perfis se vazia
         const [rowsPerfis] = await conexaoSucesso.query(`SELECT COUNT(*) AS total FROM \`perfis\`;`);

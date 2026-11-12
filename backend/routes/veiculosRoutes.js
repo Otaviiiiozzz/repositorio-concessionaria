@@ -3,6 +3,7 @@ import {
     listarVeiculos,
     buscarVeiculoPorId,
     obterResumoEstoque,
+    listarCategorias,
     cadastrarVeiculo,
     atualizarVeiculo,
     excluirVeiculo
@@ -14,8 +15,9 @@ const router = express.Router();
 // =====================================================================
 // Rotas Públicas (Catálogo e Detalhes abertos ao público/visitante)
 // =====================================================================
-router.get("/", listarVeiculos);
+router.get("/categorias", listarCategorias);
 router.get("/resumo", obterResumoEstoque);
+router.get("/", listarVeiculos);
 router.get("/:id", buscarVeiculoPorId);
 
 // =====================================================================

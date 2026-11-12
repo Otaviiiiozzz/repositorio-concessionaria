@@ -11,6 +11,7 @@ let tokenAtual = localStorage.getItem("autoprime_jwt_token") || null;
 let idEdicao = null;
 let todosVeiculos = [];
 let todasPropostas = [];
+let listaCategoriasDisponiveis = [];
 
 // =====================================================================
 // ELEMENTOS DOM
@@ -58,6 +59,7 @@ const mensagemProposta = document.getElementById("mensagemProposta");
 
 // Filtros
 const campoBusca = document.getElementById("campoBusca");
+const filtroCategoria = document.getElementById("filtroCategoria");
 const filtroFabricante = document.getElementById("filtroFabricante");
 const filtroOrdenacao = document.getElementById("filtroOrdenacao");
 
@@ -65,6 +67,7 @@ const filtroOrdenacao = document.getElementById("filtroOrdenacao");
 const campos = {
     modelo: document.getElementById("modelo"),
     fabricante: document.getElementById("fabricante"),
+    categoria: document.getElementById("categoria"),
     ano: document.getElementById("ano"),
     quilometragem: document.getElementById("quilometragem"),
     preco: document.getElementById("preco")
@@ -147,7 +150,6 @@ async function sincronizarSessaoUsuario() {
             fazerLogout();
         }
     } catch {
-        // Se a API estiver offline, mantém dados em cache se houver
         const salvo = localStorage.getItem("autoprime_usuario");
         if (salvo) usuarioAtual = JSON.parse(salvo);
     }
@@ -175,6 +177,31 @@ function fazerLogout() {
 }
 
 // =====================================================================
+// CARREGAR CATEGORIAS DO MYSQL
+// =====================================================================
+
+async function carregarCategorias() {
+    try {
+        const resposta = await fetch(`${API_BASE}/categorias`);
+        if (!resposta.ok) return;
+        const categorias = await resposta.json();
+        listaCategoriasDisponiveis = categorias;
+
+        if (campos.categoria) {
+            campos.categoria.innerHTML = '<option value="">Selecione uma categoria...</option>' +
+                categorias.map(c => `<option value="${c.id}">${c.nome}</option>`).join("");
+        }
+
+        if (filtroCategoria) {
+            filtroCategoria.innerHTML = '<option value="">Todas as categorias</option>' +
+                categorias.map(c => `<option value="${c.id}">${c.nome}</option>`).join("");
+        }
+    } catch (e) {
+        console.warn("Erro ao buscar categorias:", e.message);
+    }
+}
+
+// =====================================================================
 // CONSULTAS À API (STATUS, RESUMO, VEÍCULOS)
 // =====================================================================
 
@@ -184,7 +211,7 @@ async function verificarStatusApi() {
         const dados = await resposta.json();
         if (dados && dados.modoBanco) {
             if (dados.modoBanco === "mysql") {
-                badgeModoBanco.textContent = "💾 Banco: MySQL Conectado";
+                badgeModoBanco.textContent = "💾 Banco: MySQL Workbench";
                 badgeModoBanco.className = "badge-modo mysql";
             } else {
                 badgeModoBanco.textContent = "🚀 Modo: Armazenamento Local";
@@ -219,6 +246,7 @@ async function buscarVeiculos() {
         const params = new URLSearchParams();
         if (campoBusca.value.trim()) params.append("busca", campoBusca.value.trim());
         if (filtroFabricante.value) params.append("fabricante", filtroFabricante.value);
+        if (filtroCategoria && filtroCategoria.value) params.append("categoria_id", filtroCategoria.value);
         if (filtroOrdenacao.value && filtroOrdenacao.value !== "id_desc") {
             params.append("ordenar", filtroOrdenacao.value);
         }
@@ -269,6 +297,7 @@ function renderizarTabela(veiculos) {
 
     listaVeiculos.innerHTML = veiculos.map(v => {
         const status = v.status || "disponivel";
+        const catBadge = v.categoria_nome ? `<span class="etiqueta-cat">${v.categoria_nome}</span>` : "";
 
         // Botões conforme perfil
         let botoesAcao = "";
@@ -288,7 +317,7 @@ function renderizarTabela(veiculos) {
             <tr>
                 <td><strong>#${v.id}</strong></td>
                 <td>
-                    <strong>${v.modelo}</strong><br>
+                    <strong>${v.modelo}</strong>${catBadge}<br>
                     <small style="color: var(--text-muted);">${v.fabricante}</small>
                 </td>
                 <td>${v.ano}</td>
@@ -367,7 +396,7 @@ async function buscarPropostas() {
 }
 
 // =====================================================================
-// FORMULÁRIO DE VEÍCULOS (SUBMIT / EDIT / DELETE)
+// FORMULÁRIO DE VEÍCULOS (CRUD COMPLETO NO MYSQL)
 // =====================================================================
 
 formulario.addEventListener("submit", async evento => {
@@ -387,6 +416,7 @@ formulario.addEventListener("submit", async evento => {
     const veiculo = {
         modelo: campos.modelo.value.trim(),
         fabricante: campos.fabricante.value.trim(),
+        categoria_id: campos.categoria && campos.categoria.value ? Number(campos.categoria.value) : null,
         ano: Number(campos.ano.value),
         quilometragem: Number(campos.quilometragem.value),
         preco: Number(campos.preco.value)
@@ -398,7 +428,7 @@ formulario.addEventListener("submit", async evento => {
 
     try {
         btnSalvar.disabled = true;
-        btnSalvar.textContent = isEdicao ? "Atualizando..." : "Salvando...";
+        btnSalvar.textContent = isEdicao ? "Atualizando no MySQL..." : "Salvando no MySQL...";
 
         const resposta = await fetch(url, {
             method: metodo,
@@ -411,7 +441,7 @@ formulario.addEventListener("submit", async evento => {
             throw new Error(dados.mensagem || "Não foi possível salvar o veículo.");
         }
 
-        mostrarMensagem(dados.mensagem || "Operação realizada com sucesso!", "sucesso");
+        mostrarMensagem(dados.mensagem || "Operação realizada com sucesso no MySQL Workbench!", "sucesso");
         limparFormulario();
         await buscarVeiculos();
     } catch (erro) {
@@ -451,6 +481,9 @@ function editarVeiculo(id) {
 
     campos.modelo.value = veiculo.modelo;
     campos.fabricante.value = veiculo.fabricante;
+    if (campos.categoria && veiculo.categoria_id) {
+        campos.categoria.value = veiculo.categoria_id;
+    }
     campos.ano.value = veiculo.ano;
     campos.quilometragem.value = veiculo.quilometragem;
     campos.preco.value = veiculo.preco;
@@ -480,7 +513,7 @@ async function excluirVeiculo(id) {
     const veiculo = todosVeiculos.find(v => Number(v.id) === id);
     const nome = veiculo ? `${veiculo.fabricante} ${veiculo.modelo}` : `veículo #${id}`;
 
-    if (!confirm(`Confirmar exclusão de ${nome} do estoque?`)) return;
+    if (!confirm(`Confirmar exclusão de ${nome} diretamente do MySQL?`)) return;
 
     try {
         const resposta = await fetch(`${API_URL}/${id}`, {
@@ -494,7 +527,7 @@ async function excluirVeiculo(id) {
         }
 
         if (idEdicao === id) limparFormulario();
-        mostrarMensagem(dados.mensagem || `Veículo #${id} excluído com sucesso!`, "sucesso");
+        mostrarMensagem(dados.mensagem || `Veículo #${id} excluído com sucesso do MySQL!`, "sucesso");
         await buscarVeiculos();
     } catch (erro) {
         mostrarMensagem(erro.message || "Erro ao excluir veículo.", "erro");
@@ -504,6 +537,7 @@ async function excluirVeiculo(id) {
 function limparFormulario() {
     formulario.reset();
     idEdicao = null;
+    if (campos.categoria) campos.categoria.value = "";
     tituloFormulario.textContent = "Cadastrar novo veículo";
     etiquetaForm.textContent = "NOVO REGISTRO";
     etiquetaForm.className = "etiqueta";
@@ -670,7 +704,7 @@ function abrirModalProposta(veiculoId, modelo, preco) {
 
     modalPropostaVeiculoNome.textContent = `${modelo} • Preço de tabela: ${dinheiro(preco)}`;
     propostaVeiculoId.value = veiculoId;
-    propostaValor.value = preco ? Number(preco) * 0.95 : ""; // Sugere 5% de desconto como proposta
+    propostaValor.value = preco ? Number(preco) * 0.95 : "";
     mensagemProposta.style.display = "none";
     modalProposta.classList.remove("escondido");
     propostaValor.focus();
@@ -688,7 +722,7 @@ formProposta.addEventListener("submit", async e => {
 
     mensagemProposta.style.display = "none";
     btnSubmit.disabled = true;
-    btnSubmit.textContent = "Enviando...";
+    btnSubmit.textContent = "Enviando ao MySQL...";
 
     try {
         const res = await fetch(API_PROPOSTAS, {
@@ -704,7 +738,7 @@ formProposta.addEventListener("submit", async e => {
 
         modalProposta.classList.add("escondido");
         formProposta.reset();
-        mostrarMensagem(dados.mensagem || "Proposta enviada com sucesso!", "sucesso");
+        mostrarMensagem(dados.mensagem || "Proposta enviada com sucesso no MySQL!", "sucesso");
         await buscarPropostas();
     } catch (err) {
         mensagemProposta.textContent = err.message;
@@ -730,6 +764,7 @@ campoBusca.addEventListener("input", () => {
 });
 
 filtroFabricante.addEventListener("change", buscarVeiculos);
+if (filtroCategoria) filtroCategoria.addEventListener("change", buscarVeiculos);
 filtroOrdenacao.addEventListener("change", buscarVeiculos);
 
 btnCancelar.addEventListener("click", () => {
@@ -744,10 +779,11 @@ btnLimpar.addEventListener("click", () => {
 btnAtualizar.addEventListener("click", () => {
     buscarVeiculos();
     buscarPropostas();
-    mostrarMensagem("Dados sincronizados com a API.", "info");
+    mostrarMensagem("Dados sincronizados com o MySQL Workbench.", "info");
 });
 
 // Inicialização da Página
 sincronizarSessaoUsuario();
+carregarCategorias();
 buscarVeiculos();
 buscarPropostas();
