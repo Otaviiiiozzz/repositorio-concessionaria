@@ -2,7 +2,7 @@
 -- AutoPrime Motors - Sistema de Gestão de Concessionária
 -- Script DDL & DML - Banco de Dados Relacional MySQL
 -- =====================================================================
--- Projeto Acadêmico: Entrega 2 - Banco de Dados e Autenticação
+-- Projeto Integrador: Banco de Dados Relacional, Autenticação JWT e CRUD Completo
 -- Modelagem relacional completa com chaves primárias, estrangeiras,
 -- integridade referencial, perfis de acesso e dados iniciais.
 -- =====================================================================

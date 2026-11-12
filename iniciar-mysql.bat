@@ -25,22 +25,8 @@ echo [3/3] Aguardando inicializacao do servidor...
 timeout /t 2 >nul
 
 echo.
-echo =============================================================
-echo 🔍 Testando conexao com o banco...
-echo =============================================================
-cd /d "%~dp0backend"
-node -e "
-import('./database/conexao.js').then(async m => {
-    const res = await m.testarConexao();
-    if (res.modo === 'mysql') {
-        console.log('\n🎉 O SERVIDOR MYSQL ESTA PRONTO E CONECTADO!');
-        console.log('   Abra o MySQL Workbench e veja o banco: ' + res.config.database + '\n');
-    } else {
-        console.log('\n⚠️  Nao foi possivel detectar o MySQL ativo.');
-    }
-    process.exit(0);
-}).catch(() => process.exit(1));
-"
+set "PATH=C:\Program Files\nodejs;%PATH%"
+node "%~dp0backend\database\testar-conexao.js"
 
 echo =============================================================
 pause

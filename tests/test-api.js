@@ -1,6 +1,6 @@
 /**
  * AutoPrime Concessionária - Suíte Completa de Testes Automatizados E2E
- * Entrega: Banco de Dados Relacional & Autenticação JWT
+ * Entrega: CRUD Completo, Front-end & Banco de Dados Relacional MySQL
  *
  * Testa:
  * 1. Healthcheck & Documentação da API
@@ -39,7 +39,7 @@ function registrarResultado(titulo, passou, detalhe = "") {
 
 async function executarTestes() {
     console.log("\n=======================================================");
-    console.log(`🚗 AutoPrime - Suíte de Testes da API (Banco & Auth)`);
+    console.log("🚗 AutoPrime - Suíte de Testes da API (CRUD, Auth & MySQL)");
     console.log(`🎯 Alvo: ${BASE_URL}`);
     console.log("=======================================================\n");
 
