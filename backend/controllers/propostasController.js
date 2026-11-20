@@ -135,6 +135,9 @@ const propostasController = {
     /**
      * PATCH /propostas/:id/status
      * Atualiza o status de uma proposta (Acesso: Admin e Vendedor)
+     * Regra de negócio:
+     * - Ao aprovar uma proposta ('aprovada'), o veículo associado é automaticamente marcado como 'reservado'.
+     * - Ao recusar/cancelar ('recusada'/'cancelada'), se não houver outras propostas aprovadas para o veículo, ele volta para 'disponivel'.
      */
     async atualizarStatus(req, res, next) {
         try {
@@ -149,22 +152,52 @@ const propostasController = {
                 });
             }
 
-            const [resultado] = await pool.query(
-                `UPDATE propostas SET status = ?, vendedor_id = ? WHERE id = ?`,
-                [status, vendedorId, id]
+            // 1. Localiza a proposta para identificar o veículo vinculado
+            const [propostasExistentes] = await pool.query(
+                "SELECT id, veiculo_id, status FROM propostas WHERE id = ?",
+                [id]
             );
 
-            if (resultado.affectedRows === 0) {
+            if (!propostasExistentes || propostasExistentes.length === 0) {
                 return res.status(404).json({
                     erro: "Proposta não encontrada",
                     mensagem: `Não foi encontrada proposta com ID ${id}.`
                 });
             }
 
+            const propostaAtual = propostasExistentes[0];
+            const veiculoId = propostaAtual.veiculo_id;
+
+            // 2. Atualiza o status da proposta e registra o vendedor responsável
+            await pool.query(
+                `UPDATE propostas SET status = ?, vendedor_id = ? WHERE id = ?`,
+                [status, vendedorId, id]
+            );
+
+            // 3. Regra de Negócio: Atualização do Estoque do Veículo
+            let statusVeiculoAtualizado = null;
+            if (status === "aprovada") {
+                await pool.query("UPDATE veiculos SET status = 'reservado' WHERE id = ?", [veiculoId]);
+                statusVeiculoAtualizado = "reservado";
+            } else if (status === "recusada" || status === "cancelada") {
+                // Só volta para 'disponivel' se não houver outra proposta aprovada ativa para o mesmo veículo
+                const [outrasAprovadas] = await pool.query(
+                    "SELECT id FROM propostas WHERE veiculo_id = ? AND status = 'aprovada' AND id != ?",
+                    [veiculoId, id]
+                );
+
+                if (!outrasAprovadas || outrasAprovadas.length === 0) {
+                    await pool.query("UPDATE veiculos SET status = 'disponivel' WHERE id = ?", [veiculoId]);
+                    statusVeiculoAtualizado = "disponivel";
+                }
+            }
+
             return res.status(200).json({
                 mensagem: `Status da proposta #${id} atualizado para '${status}' com sucesso!`,
                 proposta_id: id,
                 novo_status: status,
+                veiculo_id: veiculoId,
+                status_veiculo: statusVeiculoAtualizado,
                 atualizado_por: req.usuario.nome
             });
         } catch (erro) {

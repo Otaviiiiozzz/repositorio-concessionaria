@@ -554,7 +554,7 @@ tbody tr:hover {
     text-transform: uppercase;
 }
 
-.badge-status.disponivel, .badge-status.aprovada {
+.badge-status.disponivel, .badge-status.aprovada, .badge-status.ativo {
     background: rgba(16, 185, 129, 0.15);
     color: #34d399;
     border: 1px solid rgba(16, 185, 129, 0.3);
@@ -566,10 +566,21 @@ tbody tr:hover {
     border: 1px solid rgba(245, 158, 11, 0.3);
 }
 
-.badge-status.vendido, .badge-status.recusada, .badge-status.cancelada {
+.badge-status.vendido, .badge-status.recusada, .badge-status.cancelada, .badge-status.inativo {
     background: rgba(239, 68, 68, 0.15);
     color: #fca5a5;
     border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.acoes-header-painel {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.btn-pequeno {
+    padding: 7px 14px;
+    font-size: 12px;
 }
 
 .etiqueta-cat {

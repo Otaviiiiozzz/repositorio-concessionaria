@@ -2,6 +2,7 @@ const API_BASE = "http://localhost:3000";
 const API_URL = `${API_BASE}/veiculos`;
 const API_AUTH = `${API_BASE}/auth`;
 const API_PROPOSTAS = `${API_BASE}/propostas`;
+const API_USUARIOS = `${API_BASE}/usuarios`;
 
 // =====================================================================
 // ESTADO GLOBAL DO CLIENTE
@@ -11,6 +12,7 @@ let tokenAtual = localStorage.getItem("autoprime_jwt_token") || null;
 let idEdicao = null;
 let todosVeiculos = [];
 let todasPropostas = [];
+let todosUsuarios = [];
 let listaCategoriasDisponiveis = [];
 
 // =====================================================================
@@ -19,6 +21,7 @@ let listaCategoriasDisponiveis = [];
 const formulario = document.getElementById("formVeiculo");
 const listaVeiculos = document.getElementById("listaVeiculos");
 const listaPropostas = document.getElementById("listaPropostas");
+const listaUsuarios = document.getElementById("listaUsuarios");
 const mensagem = document.getElementById("mensagem");
 const btnSalvar = document.getElementById("btnSalvar");
 const btnCancelar = document.getElementById("btnCancelar");
@@ -29,6 +32,9 @@ const tituloFormulario = document.getElementById("tituloFormulario");
 const subtituloFormulario = document.getElementById("subtituloFormulario");
 const badgeModoBanco = document.getElementById("badgeModoBanco");
 const badgeTotalPropostas = document.getElementById("badgeTotalPropostas");
+const badgeTotalUsuarios = document.getElementById("badgeTotalUsuarios");
+const totalDisponiveis = document.getElementById("totalDisponiveis");
+const painelUsuarios = document.getElementById("painelUsuarios");
 
 // Elementos de Autenticação
 const btnAbrirLogin = document.getElementById("btnAbrirLogin");
@@ -57,10 +63,18 @@ const propostaPagamento = document.getElementById("propostaPagamento");
 const propostaObs = document.getElementById("propostaObs");
 const mensagemProposta = document.getElementById("mensagemProposta");
 
+// Modal de Criação de Usuário (Admin)
+const modalNovoUsuario = document.getElementById("modalNovoUsuario");
+const btnFecharModalUsuario = document.getElementById("btnFecharModalUsuario");
+const btnNovoUsuarioAdmin = document.getElementById("btnNovoUsuarioAdmin");
+const formNovoUsuarioAdmin = document.getElementById("formNovoUsuarioAdmin");
+const mensagemNovoUsuario = document.getElementById("mensagemNovoUsuario");
+
 // Filtros
 const campoBusca = document.getElementById("campoBusca");
 const filtroCategoria = document.getElementById("filtroCategoria");
 const filtroFabricante = document.getElementById("filtroFabricante");
+const filtroStatus = document.getElementById("filtroStatus");
 const filtroOrdenacao = document.getElementById("filtroOrdenacao");
 
 // Campos do Formulário de Veículo
@@ -68,6 +82,7 @@ const campos = {
     modelo: document.getElementById("modelo"),
     fabricante: document.getElementById("fabricante"),
     categoria: document.getElementById("categoria"),
+    status: document.getElementById("statusVeiculo"),
     ano: document.getElementById("ano"),
     quilometragem: document.getElementById("quilometragem"),
     preco: document.getElementById("preco")
@@ -118,10 +133,19 @@ function atualizarUiAutenticacao() {
         } else {
             subtituloFormulario.textContent = "Preencha os dados do automóvel para registrar ou atualizar no catálogo da concessionária.";
         }
+
+        // Se for Administrador, exibe o painel de gestão de usuários
+        if (usuarioAtual.perfil === "admin") {
+            if (painelUsuarios) painelUsuarios.classList.remove("escondido");
+            buscarUsuarios();
+        } else {
+            if (painelUsuarios) painelUsuarios.classList.add("escondido");
+        }
     } else {
         btnAbrirLogin.classList.remove("escondido");
         usuarioLogadoCard.classList.add("escondido");
         subtituloFormulario.textContent = "Preencha os dados do automóvel para registrar ou atualizar no catálogo (Requer perfil Vendedor ou Admin).";
+        if (painelUsuarios) painelUsuarios.classList.add("escondido");
     }
 }
 
@@ -171,6 +195,7 @@ function fazerLogout() {
     usuarioAtual = null;
     localStorage.removeItem("autoprime_jwt_token");
     localStorage.removeItem("autoprime_usuario");
+    if (painelUsuarios) painelUsuarios.classList.add("escondido");
     atualizarUiAutenticacao();
     buscarPropostas();
     mostrarMensagem("Você encerrou sua sessão no sistema.", "info");
@@ -231,6 +256,9 @@ async function atualizarMetricas() {
         const dados = await resposta.json();
 
         document.getElementById("totalVeiculos").textContent = dados.totalVeiculos;
+        if (totalDisponiveis) {
+            totalDisponiveis.textContent = dados.disponiveis !== undefined ? dados.disponiveis : dados.totalVeiculos;
+        }
         document.getElementById("valorEstoque").textContent = dinheiro(dados.valorTotalEstoque);
         document.getElementById("mediaKm").textContent = `${numero(dados.quilometragemMedia)} km`;
     } catch (e) {
@@ -247,6 +275,7 @@ async function buscarVeiculos() {
         if (campoBusca.value.trim()) params.append("busca", campoBusca.value.trim());
         if (filtroFabricante.value) params.append("fabricante", filtroFabricante.value);
         if (filtroCategoria && filtroCategoria.value) params.append("categoria_id", filtroCategoria.value);
+        if (filtroStatus && filtroStatus.value) params.append("status", filtroStatus.value);
         if (filtroOrdenacao.value && filtroOrdenacao.value !== "id_desc") {
             params.append("ordenar", filtroOrdenacao.value);
         }
@@ -417,6 +446,7 @@ formulario.addEventListener("submit", async evento => {
         modelo: campos.modelo.value.trim(),
         fabricante: campos.fabricante.value.trim(),
         categoria_id: campos.categoria && campos.categoria.value ? Number(campos.categoria.value) : null,
+        status: campos.status ? campos.status.value : "disponivel",
         ano: Number(campos.ano.value),
         quilometragem: Number(campos.quilometragem.value),
         preco: Number(campos.preco.value)
@@ -484,6 +514,9 @@ function editarVeiculo(id) {
     if (campos.categoria && veiculo.categoria_id) {
         campos.categoria.value = veiculo.categoria_id;
     }
+    if (campos.status && veiculo.status) {
+        campos.status.value = veiculo.status;
+    }
     campos.ano.value = veiculo.ano;
     campos.quilometragem.value = veiculo.quilometragem;
     campos.preco.value = veiculo.preco;
@@ -538,6 +571,7 @@ function limparFormulario() {
     formulario.reset();
     idEdicao = null;
     if (campos.categoria) campos.categoria.value = "";
+    if (campos.status) campos.status.value = "disponivel";
     tituloFormulario.textContent = "Cadastrar novo veículo";
     etiquetaForm.textContent = "NOVO REGISTRO";
     etiquetaForm.className = "etiqueta";
@@ -566,6 +600,7 @@ listaPropostas.addEventListener("click", async evento => {
 
         mostrarMensagem(dados.mensagem || "Status atualizado!", "sucesso");
         await buscarPropostas();
+        await buscarVeiculos();
     } catch (e) {
         mostrarMensagem(e.message, "erro");
     }
@@ -750,10 +785,149 @@ formProposta.addEventListener("submit", async e => {
     }
 });
 
+// =====================================================================
+// GESTÃO DE USUÁRIOS (EXCLUSIVO ADMINISTRADOR - RBAC)
+// =====================================================================
+
+async function buscarUsuarios() {
+    if (!tokenAtual || !usuarioAtual || usuarioAtual.perfil !== "admin") return;
+
+    try {
+        const res = await fetch(API_USUARIOS, {
+            headers: obterHeaders(true)
+        });
+        const dados = await res.json();
+        if (!res.ok) return;
+
+        todosUsuarios = dados.usuarios || [];
+        if (badgeTotalUsuarios) badgeTotalUsuarios.textContent = `${todosUsuarios.length} USUÁRIOS`;
+
+        if (!listaUsuarios) return;
+
+        if (todosUsuarios.length === 0) {
+            listaUsuarios.innerHTML = '<tr><td colspan="7" class="vazio">Nenhum usuário cadastrado.</td></tr>';
+            return;
+        }
+
+        listaUsuarios.innerHTML = todosUsuarios.map(u => {
+            const statusTexto = u.ativo ? "ativo" : "inativo";
+            const isEuMesmo = usuarioAtual && usuarioAtual.id === u.id;
+
+            let botaoAcao = '<span style="color: var(--text-muted); font-size: 11px;">(Sua conta)</span>';
+            if (!isEuMesmo) {
+                botaoAcao = u.ativo
+                    ? `<button type="button" class="acao excluir" data-id="${u.id}" data-ativo="1" data-acao="toggle-usuario" title="Desativar acesso">🚫 Inativar</button>`
+                    : `<button type="button" class="acao editar" data-id="${u.id}" data-ativo="0" data-acao="toggle-usuario" title="Reativar acesso">✅ Ativar</button>`;
+            }
+
+            return `
+                <tr>
+                    <td><strong>#${u.id}</strong></td>
+                    <td><strong>${u.nome}</strong></td>
+                    <td>${u.email}</td>
+                    <td><span class="badge-perfil ${u.perfil.nome}">${u.perfil.nome.toUpperCase()}</span></td>
+                    <td>${u.telefone || "-"}</td>
+                    <td><span class="badge-status ${statusTexto}">${statusTexto.toUpperCase()}</span></td>
+                    <td><div class="acoes-tabela">${botaoAcao}</div></td>
+                </tr>
+            `;
+        }).join("");
+    } catch (e) {
+        console.warn("Erro ao buscar usuários:", e.message);
+    }
+}
+
+if (listaUsuarios) {
+    listaUsuarios.addEventListener("click", async e => {
+        const btn = e.target.closest("button[data-acao='toggle-usuario']");
+        if (!btn) return;
+
+        const id = Number(btn.dataset.id);
+        const ativoAtual = Number(btn.dataset.ativo) === 1;
+        const novoStatus = !ativoAtual;
+
+        try {
+            const res = await fetch(`${API_USUARIOS}/${id}/status`, {
+                method: "PATCH",
+                headers: obterHeaders(true),
+                body: JSON.stringify({ ativo: novoStatus })
+            });
+            const dados = await res.json();
+            if (!res.ok) throw new Error(dados.mensagem || "Erro ao alterar status do usuário.");
+
+            mostrarMensagem(dados.mensagem || "Status do usuário atualizado no MySQL!", "sucesso");
+            await buscarUsuarios();
+        } catch (err) {
+            mostrarMensagem(err.message, "erro");
+        }
+    });
+}
+
+if (btnNovoUsuarioAdmin) {
+    btnNovoUsuarioAdmin.addEventListener("click", () => {
+        if (modalNovoUsuario) {
+            modalNovoUsuario.classList.remove("escondido");
+            if (mensagemNovoUsuario) mensagemNovoUsuario.style.display = "none";
+            const campoNome = document.getElementById("adminCadNome");
+            if (campoNome) campoNome.focus();
+        }
+    });
+}
+
+if (btnFecharModalUsuario && modalNovoUsuario) {
+    btnFecharModalUsuario.addEventListener("click", () => {
+        modalNovoUsuario.classList.add("escondido");
+    });
+}
+
+if (formNovoUsuarioAdmin) {
+    formNovoUsuarioAdmin.addEventListener("submit", async e => {
+        e.preventDefault();
+        const nome = document.getElementById("adminCadNome").value.trim();
+        const email = document.getElementById("adminCadEmail").value.trim();
+        const perfil_id = Number(document.getElementById("adminCadPerfil").value);
+        const telefone = document.getElementById("adminCadTelefone").value.trim();
+        const senha = document.getElementById("adminCadSenha").value;
+        const btnSubmit = document.getElementById("btnSubmitNovoUsuario");
+
+        if (mensagemNovoUsuario) mensagemNovoUsuario.style.display = "none";
+        btnSubmit.disabled = true;
+        btnSubmit.textContent = "Criando no MySQL...";
+
+        try {
+            const res = await fetch(API_USUARIOS, {
+                method: "POST",
+                headers: obterHeaders(true),
+                body: JSON.stringify({ nome, email, perfil_id, telefone, senha })
+            });
+            const dados = await res.json();
+
+            if (!res.ok) {
+                throw new Error(dados.mensagem || "Erro ao cadastrar usuário.");
+            }
+
+            modalNovoUsuario.classList.add("escondido");
+            formNovoUsuarioAdmin.reset();
+            mostrarMensagem(dados.mensagem || "Usuário cadastrado com sucesso no MySQL!", "sucesso");
+            await buscarUsuarios();
+        } catch (err) {
+            if (mensagemNovoUsuario) {
+                mensagemNovoUsuario.textContent = err.message;
+                mensagemNovoUsuario.className = "mensagem-modal erro";
+                mensagemNovoUsuario.style.display = "block";
+            }
+        } finally {
+            btnSubmit.disabled = false;
+            btnSubmit.textContent = "Criar Usuário";
+        }
+    });
+}
+
 // Fechar modais ao clicar no fundo escuro
 window.addEventListener("click", e => {
     if (e.target === modalAuth) modalAuth.classList.add("escondido");
     if (e.target === modalProposta) modalProposta.classList.add("escondido");
+    if (e.target === modalNovoUsuario) modalNovoUsuario.classList.add("escondido");
 });
 
 // Listeners de Filtro com Debounce
@@ -765,6 +939,7 @@ campoBusca.addEventListener("input", () => {
 
 filtroFabricante.addEventListener("change", buscarVeiculos);
 if (filtroCategoria) filtroCategoria.addEventListener("change", buscarVeiculos);
+if (filtroStatus) filtroStatus.addEventListener("change", buscarVeiculos);
 filtroOrdenacao.addEventListener("change", buscarVeiculos);
 
 btnCancelar.addEventListener("click", () => {
@@ -779,6 +954,9 @@ btnLimpar.addEventListener("click", () => {
 btnAtualizar.addEventListener("click", () => {
     buscarVeiculos();
     buscarPropostas();
+    if (usuarioAtual && usuarioAtual.perfil === "admin") {
+        buscarUsuarios();
+    }
     mostrarMensagem("Dados sincronizados com o MySQL Workbench.", "info");
 });
 

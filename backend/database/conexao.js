@@ -318,6 +318,20 @@ function executarQueryMemoria(sql, params = []) {
             lista = lista.filter(p => p.cliente_id === clienteId);
         }
 
+        if (sqlUpper.includes("WHERE ID = ?") || sqlUpper.includes("WHERE P.ID = ?")) {
+            const propId = Number(params[0]);
+            lista = lista.filter(p => p.id === propId);
+        }
+
+        if (sqlUpper.includes("VEICULO_ID = ?") && sqlUpper.includes("STATUS = 'APROVADA'")) {
+            const veicId = Number(params[0]);
+            lista = lista.filter(p => p.veiculo_id === veicId && p.status === "aprovada");
+            if (params.length > 1) {
+                const excId = Number(params[1]);
+                lista = lista.filter(p => p.id !== excId);
+            }
+        }
+
         return [lista];
     }
 
@@ -381,11 +395,38 @@ function executarQueryMemoria(sql, params = []) {
 
     // UPDATE veiculos
     if (sqlUpper.startsWith("UPDATE VEICULOS")) {
-        let modelo, fabricante, ano, quilometragem, preco, id;
+        if (sqlUpper.includes("SET STATUS = 'RESERVADO' WHERE ID = ?")) {
+            const id = Number(params[0]);
+            const veic = dadosMemoria.veiculos.find(v => Number(v.id) === id);
+            if (veic) veic.status = "reservado";
+            salvarDadosLocais(dadosMemoria);
+            return [{ affectedRows: veic ? 1 : 0 }];
+        }
+
+        if (sqlUpper.includes("SET STATUS = 'DISPONIVEL' WHERE ID = ?")) {
+            const id = Number(params[0]);
+            const veic = dadosMemoria.veiculos.find(v => Number(v.id) === id);
+            if (veic) veic.status = "disponivel";
+            salvarDadosLocais(dadosMemoria);
+            return [{ affectedRows: veic ? 1 : 0 }];
+        }
+
+        if (sqlUpper.includes("SET STATUS = ? WHERE ID = ?")) {
+            const [novoStatus, id] = params;
+            const veic = dadosMemoria.veiculos.find(v => Number(v.id) === Number(id));
+            if (veic) veic.status = novoStatus;
+            salvarDadosLocais(dadosMemoria);
+            return [{ affectedRows: veic ? 1 : 0 }];
+        }
+
+        let modelo, fabricante, ano, quilometragem, preco, id, status;
         if (params.length === 6) {
             [modelo, fabricante, ano, quilometragem, preco, id] = params;
-        } else {
-            [modelo, fabricante, ano, quilometragem, preco, id] = params;
+        } else if (params.length >= 7) {
+            // modelo, fabricante, ano, quilometragem, preco, categoria_id, status, id
+            [modelo, fabricante, ano, quilometragem, preco] = params;
+            id = params[params.length - 1];
+            status = params[params.length - 2];
         }
 
         const index = dadosMemoria.veiculos.findIndex(v => Number(v.id) === Number(id));
@@ -401,6 +442,7 @@ function executarQueryMemoria(sql, params = []) {
             ano: Number(ano),
             quilometragem: Number(quilometragem),
             preco: Number(preco),
+            status: status || dadosMemoria.veiculos[index].status || "disponivel",
             atualizado_em: new Date().toISOString()
         };
 

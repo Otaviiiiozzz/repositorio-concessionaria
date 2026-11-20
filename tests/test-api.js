@@ -1,12 +1,12 @@
 /**
  * AutoPrime Concessionária - Suíte Completa de Testes Automatizados E2E
- * Entrega: CRUD Completo, Front-end & Banco de Dados Relacional MySQL
+ * Entrega Final: Sistema Completo de Gestão de Concessionária AutoPrime
  *
  * Testa:
  * 1. Healthcheck & Documentação da API
- * 2. Catálogo público de veículos
- * 3. Cadastro de usuário com validação e hash de senha
- * 4. Tratamento de e-mail duplicado (409) e validações (400)
+ * 2. Catálogo público de veículos e filtros avançados (status, fabricante, busca)
+ * 3. Cadastro de usuário com validação e hash de senha bcrypt
+ * 4. Tratamento de e-mail duplicado (409) e validações de integridade (400)
  * 5. Login de usuários (Admin, Vendedor, Cliente) com validação de senha bcrypt
  * 6. Rejeição de credenciais incorretas (401)
  * 7. Proteção de rotas com JWT (401 se ausente, 403 se inválido)
@@ -15,8 +15,9 @@
  *    - Vendedor com permissão de cadastrar e editar (201/200)
  *    - Vendedor bloqueado de excluir (403)
  *    - Admin com permissão total para exclusão (200)
- * 9. Gestão de usuários (restrita ao Administrador)
- * 10. Fluxo de propostas relacionando Usuários e Veículos
+ * 9. Gestão de usuários e ativação/inativação de contas (restrita ao Administrador)
+ * 10. Fluxo de negociação com tabelas relacionais (Usuários, Veículos e Propostas)
+ * 11. Regra de negócio: Reserva automática do veículo ao aprovar proposta
  */
 
 const BASE_URL = process.env.API_URL || "http://localhost:3000";
@@ -65,6 +66,10 @@ async function executarTestes() {
         const resResumo = await fetch(`${BASE_URL}/veiculos/resumo`);
         const resumo = await resResumo.json();
         registrarResultado("GET /veiculos/resumo retorna métricas consolidadas", typeof resumo.totalVeiculos === "number");
+
+        const resStatus = await fetch(`${BASE_URL}/veiculos?status=disponivel`);
+        const veicsDisp = await resStatus.json();
+        registrarResultado("GET /veiculos?status=disponivel filtra veículos disponíveis (200)", resStatus.status === 200 && Array.isArray(veicsDisp) && veicsDisp.every(v => v.status === "disponivel"));
 
         // -------------------------------------------------------------
         // 3. Cadastro de Novos Usuários (Hash de Senha & Validações)
@@ -256,6 +261,28 @@ async function executarTestes() {
         const listaUsers = await resUserAdmin.json();
         registrarResultado("Administrador lista todos os usuários cadastrados (200 OK)", resUserAdmin.status === 200 && Array.isArray(listaUsers.usuarios));
 
+        // Admin alterando status de usuário (inativar e reativar)
+        const resInativar = await fetch(`${BASE_URL}/usuarios/3/status`, {
+            method: "PATCH",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${tokenAdmin}`
+            },
+            body: JSON.stringify({ ativo: 0 })
+        });
+        registrarResultado("Administrador inativa conta de usuário (200 OK)", resInativar.status === 200);
+
+        // Reativa conta
+        const resReativar = await fetch(`${BASE_URL}/usuarios/3/status`, {
+            method: "PATCH",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${tokenAdmin}`
+            },
+            body: JSON.stringify({ ativo: 1 })
+        });
+        registrarResultado("Administrador reativa conta de usuário com sucesso (200 OK)", resReativar.status === 200);
+
         // -------------------------------------------------------------
         // 8. Fluxo Relacional de Propostas de Compra (Usuários x Veículos)
         // -------------------------------------------------------------
@@ -303,6 +330,11 @@ async function executarTestes() {
                 body: JSON.stringify({ status: "aprovada" })
             });
             registrarResultado("Vendedor atualiza status da proposta para 'aprovada' (200 OK)", resAprovaProp.status === 200);
+
+            // Verifica se o veículo foi marcado automaticamente como 'reservado' no estoque
+            const resVeic1 = await fetch(`${BASE_URL}/veiculos/1`);
+            const dadosVeic1 = await resVeic1.json();
+            registrarResultado("Regra de negócio: Veículo passa para status 'reservado' ao aprovar proposta", resVeic1.status === 200 && dadosVeic1.status === "reservado");
         }
 
         // -------------------------------------------------------------

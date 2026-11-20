@@ -39,11 +39,11 @@ function validarVeiculo(dados) {
 
 /**
  * GET /veiculos
- * Suporta filtros via query string: ?busca=corolla&fabricante=Toyota&preco_max=160000&ordenar=preco_asc&categoria_id=1
+ * Suporta filtros via query string: ?busca=corolla&fabricante=Toyota&preco_max=160000&ordenar=preco_asc&categoria_id=1&status=disponivel
  */
 async function listarVeiculos(req, res) {
     try {
-        const { busca, fabricante, preco_max, ordenar, categoria_id } = req.query;
+        const { busca, fabricante, preco_max, ordenar, categoria_id, status } = req.query;
 
         // Consulta veículos no MySQL com JOIN na tabela categorias
         const [todosVeiculos] = await pool.query(`
@@ -73,6 +73,11 @@ async function listarVeiculos(req, res) {
         if (categoria_id && !isNaN(Number(categoria_id))) {
             const catId = Number(categoria_id);
             resultado = resultado.filter(v => Number(v.categoria_id) === catId);
+        }
+
+        if (status && status.trim()) {
+            const statusFiltro = status.trim().toLowerCase();
+            resultado = resultado.filter(v => (v.status || "disponivel").toLowerCase() === statusFiltro);
         }
 
         if (preco_max && !isNaN(Number(preco_max))) {
@@ -139,14 +144,31 @@ async function obterResumoEstoque(req, res) {
         const somaKm = veiculos.reduce((sum, v) => sum + Number(v.quilometragem || 0), 0);
         const mediaKm = total > 0 ? Math.round(somaKm / total) : 0;
 
+        const disponiveis = veiculos.filter(v => (v.status || "disponivel") === "disponivel").length;
+        const reservados = veiculos.filter(v => v.status === "reservado").length;
+        const vendidos = veiculos.filter(v => v.status === "vendido").length;
+
         const fabricantes = {};
         veiculos.forEach(v => {
             const fab = v.fabricante || "Outro";
             fabricantes[fab] = (fabricantes[fab] || 0) + 1;
         });
 
+        // Contabiliza total de propostas no banco
+        let totalPropostas = 0;
+        try {
+            const [propostas] = await pool.query("SELECT COUNT(*) AS total FROM propostas");
+            totalPropostas = propostas[0]?.total || 0;
+        } catch {
+            totalPropostas = 0;
+        }
+
         res.status(200).json({
             totalVeiculos: total,
+            disponiveis,
+            reservados,
+            vendidos,
+            totalPropostas,
             valorTotalEstoque: valorTotal,
             quilometragemMedia: mediaKm,
             distribuicaoFabricantes: fabricantes,
@@ -182,12 +204,16 @@ async function cadastrarVeiculo(req, res) {
         return res.status(400).json({ mensagem: erroValidacao });
     }
 
-    const { modelo, fabricante, ano, quilometragem, preco, categoria_id } = req.body;
+    const { modelo, fabricante, ano, quilometragem, preco, categoria_id, status } = req.body;
+    const statusValido = status && ["disponivel", "reservado", "vendido"].includes(String(status).toLowerCase())
+        ? String(status).toLowerCase()
+        : "disponivel";
     const cadastradoPor = req.usuario ? req.usuario.id : null;
+
     try {
         const [resultado] = await pool.query(
-            "INSERT INTO veiculos (modelo, fabricante, ano, quilometragem, preco, status, categoria_id, cadastrado_por) VALUES (?, ?, ?, ?, ?, 'disponivel', ?, ?)",
-            [modelo.trim(), fabricante.trim(), Number(ano), Number(quilometragem), Number(preco), categoria_id ? Number(categoria_id) : null, cadastradoPor]
+            "INSERT INTO veiculos (modelo, fabricante, ano, quilometragem, preco, status, categoria_id, cadastrado_por) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            [modelo.trim(), fabricante.trim(), Number(ano), Number(quilometragem), Number(preco), statusValido, categoria_id ? Number(categoria_id) : null, cadastradoPor]
         );
 
         const novoVeiculo = {
@@ -197,7 +223,7 @@ async function cadastrarVeiculo(req, res) {
             ano: Number(ano),
             quilometragem: Number(quilometragem),
             preco: Number(preco),
-            status: "disponivel",
+            status: statusValido,
             categoria_id: categoria_id ? Number(categoria_id) : null,
             cadastrado_por: cadastradoPor
         };
@@ -228,17 +254,21 @@ async function atualizarVeiculo(req, res) {
         return res.status(400).json({ mensagem: erroValidacao });
     }
 
-    const { modelo, fabricante, ano, quilometragem, preco, categoria_id } = req.body;
+    const { modelo, fabricante, ano, quilometragem, preco, categoria_id, status } = req.body;
+    const statusValido = status && ["disponivel", "reservado", "vendido"].includes(String(status).toLowerCase())
+        ? String(status).toLowerCase()
+        : null;
+
     try {
         // Verifica se o veículo existe
-        const [existentes] = await pool.query("SELECT id FROM veiculos WHERE id = ?", [id]);
+        const [existentes] = await pool.query("SELECT id, status, categoria_id FROM veiculos WHERE id = ?", [id]);
         if (existentes.length === 0) {
             return res.status(404).json({ mensagem: `Veículo com ID #${id} não encontrado para atualização.` });
         }
 
         await pool.query(
-            "UPDATE veiculos SET modelo = ?, fabricante = ?, ano = ?, quilometragem = ?, preco = ?, categoria_id = COALESCE(?, categoria_id) WHERE id = ?",
-            [modelo.trim(), fabricante.trim(), Number(ano), Number(quilometragem), Number(preco), categoria_id ? Number(categoria_id) : null, id]
+            "UPDATE veiculos SET modelo = ?, fabricante = ?, ano = ?, quilometragem = ?, preco = ?, categoria_id = COALESCE(?, categoria_id), status = COALESCE(?, status) WHERE id = ?",
+            [modelo.trim(), fabricante.trim(), Number(ano), Number(quilometragem), Number(preco), categoria_id ? Number(categoria_id) : null, statusValido, id]
         );
 
         const veiculoAtualizado = {
@@ -248,6 +278,7 @@ async function atualizarVeiculo(req, res) {
             ano: Number(ano),
             quilometragem: Number(quilometragem),
             preco: Number(preco),
+            status: statusValido || existentes[0].status || "disponivel",
             categoria_id: categoria_id ? Number(categoria_id) : existentes[0].categoria_id
         };
 

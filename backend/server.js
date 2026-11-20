@@ -20,7 +20,7 @@ app.get("/", (req, res) => {
     const config = obterConfigConectada();
     res.status(200).json({
         sistema: "AutoPrime Motors - Gestão de Concessionária",
-        versao: "3.0.0 (Entrega: CRUD Completo, Front-end & MySQL Workbench)",
+        versao: "4.0.0 (Entrega Final: Solução Completa de Gestão de Concessionária)",
         status: "Online",
         modoBanco: obterModoAtivo(),
         detalhesBanco: obterModoAtivo() === "mysql" ? {

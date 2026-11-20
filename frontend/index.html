@@ -50,6 +50,13 @@
                 </div>
             </article>
             <article class="cartao-resumo">
+                <span class="resumo-icone">✨</span>
+                <div>
+                    <p>Veículos Disponíveis</p>
+                    <strong id="totalDisponiveis">0</strong>
+                </div>
+            </article>
+            <article class="cartao-resumo">
                 <span class="resumo-icone">🛣️</span>
                 <div>
                     <p>Quilometragem média</p>
@@ -98,6 +105,14 @@
                             <option value="">Selecione uma categoria...</option>
                         </select>
                     </div>
+                    <div class="campo">
+                        <label for="statusVeiculo">Status *</label>
+                        <select id="statusVeiculo" required>
+                            <option value="disponivel">Disponível</option>
+                            <option value="reservado">Reservado</option>
+                            <option value="vendido">Vendido</option>
+                        </select>
+                    </div>
                     <div class="campo campo-preco">
                         <label for="preco">Preço de Venda (R$) *</label>
                         <input type="number" id="preco" placeholder="158900.00" min="1" step="0.01" required>
@@ -133,6 +148,12 @@
                     </select>
                     <select id="filtroFabricante">
                         <option value="">Todos os fabricantes</option>
+                    </select>
+                    <select id="filtroStatus">
+                        <option value="">Todos os status</option>
+                        <option value="disponivel">Disponível</option>
+                        <option value="reservado">Reservado</option>
+                        <option value="vendido">Vendido</option>
                     </select>
                     <select id="filtroOrdenacao">
                         <option value="id_desc">Mais recentes (Padrão)</option>
@@ -194,6 +215,40 @@
                     <tbody id="listaPropostas">
                         <tr>
                             <td colspan="8" class="vazio">Faça login para visualizar suas propostas e negociações.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Seção de Gestão de Usuários (Exclusivo Administrador) -->
+        <section class="painel usuarios-painel escondido" id="painelUsuarios">
+            <div class="painel-titulo">
+                <div>
+                    <h2>👥 Gestão de Usuários & Controle de Acesso (RBAC)</h2>
+                    <p>Controle centralizado de credenciais, permissões e status de ativação (Exclusivo Administrador).</p>
+                </div>
+                <div class="acoes-header-painel">
+                    <span class="etiqueta" id="badgeTotalUsuarios">0 USUÁRIOS</span>
+                    <button type="button" class="botao-principal btn-pequeno" id="btnNovoUsuarioAdmin">＋ Novo Usuário</button>
+                </div>
+            </div>
+            <div class="tabela-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nome Completo</th>
+                            <th>E-mail</th>
+                            <th>Perfil / Função</th>
+                            <th>Telefone</th>
+                            <th>Status</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="listaUsuarios">
+                        <tr>
+                            <td colspan="7" class="vazio">Faça login como Administrador para gerenciar usuários.</td>
                         </tr>
                     </tbody>
                 </table>
@@ -291,6 +346,45 @@
                 </div>
                 <p id="mensagemProposta" class="mensagem-modal"></p>
                 <button type="submit" class="botao-principal largo" id="btnSubmitProposta">Enviar Proposta</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal de Criação de Usuário pelo Admin -->
+    <div class="modal-overlay escondido" id="modalNovoUsuario">
+        <div class="modal-card">
+            <button type="button" class="modal-fechar" id="btnFecharModalUsuario">✕</button>
+            <div class="modal-header">
+                <h3>👤 Cadastrar Novo Usuário</h3>
+                <p>Criação com atribuição direta de perfil (Admin, Vendedor ou Cliente).</p>
+            </div>
+            <form id="formNovoUsuarioAdmin" class="form-modal">
+                <div class="campo-modal">
+                    <label for="adminCadNome">Nome Completo *</label>
+                    <input type="text" id="adminCadNome" placeholder="Ex.: Fernanda Souza" required minlength="3">
+                </div>
+                <div class="campo-modal">
+                    <label for="adminCadEmail">E-mail *</label>
+                    <input type="email" id="adminCadEmail" placeholder="fernanda@autoprime.com" required>
+                </div>
+                <div class="campo-modal">
+                    <label for="adminCadPerfil">Perfil de Acesso *</label>
+                    <select id="adminCadPerfil" required>
+                        <option value="1">Administrador (Acesso total)</option>
+                        <option value="2">Vendedor (Gestão do estoque e propostas)</option>
+                        <option value="3" selected>Cliente (Consulta e propostas)</option>
+                    </select>
+                </div>
+                <div class="campo-modal">
+                    <label for="adminCadTelefone">Telefone (WhatsApp)</label>
+                    <input type="text" id="adminCadTelefone" placeholder="(51) 98888-7777">
+                </div>
+                <div class="campo-modal">
+                    <label for="adminCadSenha">Senha Inicial (mín. 6 caracteres) *</label>
+                    <input type="password" id="adminCadSenha" placeholder="••••••••" required minlength="6">
+                </div>
+                <p id="mensagemNovoUsuario" class="mensagem-modal"></p>
+                <button type="submit" class="botao-principal largo" id="btnSubmitNovoUsuario">Criar Usuário</button>
             </form>
         </div>
     </div>
